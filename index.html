@@ -1098,7 +1098,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519h', date:'2026-05-19', note:'設定の保存・初期化時に画面を自動リロードし、変更内容（デフォルト値・指示書・テンプレ等）を即時反映するよう改善。'};
+  const APP_BUILD = {version:'rev.0519i', date:'2026-05-19', note:'設定の保存・初期化・CSV会員取込の完了後に画面を自動リロードし、変更内容を即時反映するよう改善。'};
 
   const DEFAULT_SETTINGS = {
     defaultInviteExpiry:'', defaultAccountExpiry:'', defaultAvailableInvites:'',
@@ -1931,8 +1931,8 @@
           added++;
         }
         commitMembers(existing);
-        renderMembers();
-        toast(`${added}件をインポートしました`);
+        toast(`${added}件をインポートしました。画面を更新します…`);
+        setTimeout(function(){ location.reload(); }, 900);
       }catch(err){toast('CSV取込失敗：' + err.message, true);}
     };
     reader.readAsText(file, 'UTF-8');
