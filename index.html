@@ -1098,7 +1098,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519j', date:'2026-05-19', note:'ヘッダーのリビジョン表記をAPP_BUILDと自動連動させ、版数の表示ズレを解消。'};
+  const APP_BUILD = {version:'rev.0519k', date:'2026-05-19', note:'「初期値に戻す」が指示書ステップ等を消す不具合を修正。GASが保持する既定値から正しく復元するよう変更。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2119,12 +2119,11 @@
     setTimeout(function(){ location.reload(); }, 900);
   }
   function resetSettings(){
-    if(!confirm('全設定を初期値に戻します。よろしいですか？')) return;
-    SETTINGS = cloneDefaults();
-    saveJSON(SETTINGS_KEY, SETTINGS);
-    pushSettings();
+    if(!confirm('全設定を初期値に戻します。\n指示書ステップ・メールテンプレ等も既定値に戻ります。よろしいですか？')) return;
+    // 設定シートを空化→GASが本来の既定値（指示書ステップ含む）を再シードする
+    pushTo_({settings:null});
     toast('初期値に戻しました。画面を更新します…');
-    setTimeout(function(){ location.reload(); }, 900);
+    setTimeout(function(){ location.reload(); }, 1500);
   }
 
   /* ===== 共通 ===== */
