@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>CSデジタル版 招待発行管理</title>
+<style>
+  :root{
+    --bg:#f4f6f9;
+    --panel:#ffffff;
+    --border:#d8dee7;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --accent:#1e5b7a;
+    --accent-hover:#164a64;
+    --soft:#eef4f8;
+    --danger:#dc2626;
+    --ok:#16a34a;
+    --warn:#d97706;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"BIZ UDPGothic","BIZ UDP Gothic","Yu Gothic UI","Meiryo",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+    line-height:1.6;
+    transition:background 0.2s;
+  }
+  body.bg-work{--bg:#dde9f1;}
+  body.bg-history{--bg:#e8eaed;}
+  header{
+    background:var(--accent);
+    color:#fff;
+    padding:10px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    flex-wrap:wrap;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  header h1{margin:0;font-size:16px;font-weight:700;}
+  header .actions{display:flex;gap:6px;flex-wrap:wrap;}
+  header button{
+    background:rgba(255,255,255,0.15);
+    color:#fff;
+    border:1px solid rgba(255,255,255,0.35);
+    padding:5px 10px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:11px;
+    font-family:inherit;
+  }
+  header button:hover{background:rgba(255,255,255,0.28);}
+  .sync-status{
+    font-size:11px;
+    color:rgba(255,255,255,0.85);
+    align-self:center;
+    white-space:nowrap;
+  }
+  .sync-status.ok{color:#bbf7d0;}
+  .sync-status.err{color:#fecaca;}
+  #authGate{
+    position:fixed;
+    inset:0;
+    z-index:500;
+    background:var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    text-align:center;
+  }
+  #authGate .box{max-width:440px;}
+  #authGate h2{color:var(--accent);font-size:18px;margin:0 0 10px;}
+  #authGate p{color:var(--muted);font-size:13px;line-height:1.9;margin:0 0 16px;}
+  #authGate button{
+    background:var(--accent);color:#fff;border:none;
+    padding:9px 20px;border-radius:6px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:700;
+  }
+
+  /* ヘッダー固定 */
+  .sticky-top{
+    position:sticky;
+    top:0;
+    z-index:50;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  /* 画面切替ナビ */
+  .screen-nav{
+    display:flex;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+  }
+  .screen-nav button{
+    flex:1;
+    background:transparent;
+    border:none;
+    border-bottom:3px solid transparent;
+    padding:11px 8px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:14px;
+    font-weight:700;
+    color:var(--muted);
+  }
+  .screen-nav button.active{
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+  }
+  #navWork.active{background:#c6dcea;}
+  #navHistory.active{background:#cdd1d6;}
+
+  main{padding:0 14px 45vh;max-width:1080px;margin:0 auto;}
+  .screen{display:none;}
+  .screen.active{display:block;}
+  #screen-history{padding-top:14px;}
+  .work-inner{max-width:600px;margin:0 auto;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px;
+    margin-bottom:12px;
+  }
+  .panel-title{
+    margin:0 0 12px;
+    font-size:14px;
+    font-weight:700;
+    color:var(--accent);
+    border-bottom:2px solid var(--accent);
+    padding-bottom:6px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel-title .sub{font-size:11px;font-weight:400;color:var(--muted);}
+  .panel-title .title-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .instr-head-row{
+    display:flex;
+    gap:10px;
+    align-items:stretch;
+    margin-top:8px;
+  }
+  .instr-counter-box{
+    flex:0 0 auto;
+    text-align:center;
+    background:var(--accent);
+    border-radius:6px;
+    padding:6px 14px;
+    line-height:1.35;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .instr-counter-box .lbl{font-size:10px;color:#cfe0ea;font-weight:700;}
+  .instr-counter-box .num{font-size:17px;font-weight:700;color:#fff;}
+  .instr-counter-box .pct{font-size:11px;color:#cfe0ea;font-weight:700;}
+  .instr-head-row .instr-note{flex:1;margin:0;display:flex;align-items:center;}
+  .instr-sticky-head{
+    position:sticky;
+    top:var(--instr-sticky-top,140px);
+    background:var(--panel);
+    z-index:8;
+    margin:-14px -14px 0;
+    padding:14px 14px 10px;
+    border-radius:8px 8px 0 0;
+    border-bottom:1px solid var(--border);
+  }
+  .instr-sticky-head::before,
+  .instr-sticky-head::after{
+    content:"";
+    position:absolute;
+    top:0;
+    width:8px;
+    height:8px;
+  }
+  .instr-sticky-head::before{
+    left:0;
+    background:radial-gradient(circle 8px at 8px 8px, transparent 7.5px, var(--bg) 8px);
+  }
+  .instr-sticky-head::after{
+    right:0;
+    background:radial-gradient(circle 8px at 0 8px, transparent 7.5px, var(--bg) 8px);
+  }
+  .instr-sticky-head .panel-title{margin-bottom:8px;}
+  .instr-note{
+    font-size:12px;
+    font-weight:700;
+    color:var(--accent);
+    background:var(--soft);
+    border-left:3px solid var(--accent);
+    border-radius:4px;
+    padding:6px 10px;
+  }
+
+  /* サブタブ（発行作業の中） */
+  .subtabs{
+    display:flex;
+    gap:4px;
+    position:sticky;
+    top:var(--topbar-h, 96px);
+    z-index:20;
+    background:var(--bg);
+    padding:14px 0 16px;
+    margin-bottom:0;
+  }
+  .subtabs button{
+    flex:1;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:9px 6px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+  }
+  .subtabs button.active{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  .subpane{display:none;}
+  .subpane.active{display:block;}
+
+  .section-desc{
+    font-size:11px;
+    color:var(--muted);
+    margin:-2px 0 10px;
+    line-height:1.5;
+  }
+  .field{margin-bottom:10px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:2px;
+    font-weight:600;
+  }
+  .req{color:var(--danger);margin-left:2px;}
+  .field input,.field select,.field textarea{
+    width:100%;
+    padding:7px 9px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--text);
+    background:#fff;
+  }
+  input::placeholder,textarea::placeholder{color:#9ca3af;opacity:1;}
+  .field input:focus,.field select:focus,.field textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px rgba(30,91,122,0.15);
+  }
+  .field textarea{resize:vertical;min-height:54px;}
+  .field .hint{font-size:11px;color:var(--muted);margin-top:2px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+  /* 会員DBから選択（インライン候補リスト） */
+  .member-picker{
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px;
+    background:var(--soft);
+    margin-bottom:12px;
+  }
+  .member-pick-list{
+    margin-top:6px;
+    max-height:220px;
+    overflow-y:auto;
+  }
+  .member-pick-hint{
+    font-size:11px;
+    color:var(--muted);
+    padding:8px 4px;
+    text-align:center;
+  }
+  .member-pick-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    background:#fff;
+    margin-bottom:4px;
+  }
+  .member-pick-info{min-width:0;}
+  .member-pick-name{font-size:13px;font-weight:700;}
+  .member-pick-sub{font-size:11px;color:var(--muted);word-break:break-all;}
+  .member-pick-badge{
+    display:inline-block;
+    font-size:9px;
+    font-weight:700;
+    padding:1px 6px;
+    border-radius:8px;
+    background:#fef3c7;
+    color:#92400e;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+  .member-pick-row button{flex:0 0 auto;}
+
+  .btn{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:7px 14px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+    font-family:inherit;
+    font-weight:600;
+  }
+  .btn:hover{background:var(--accent-hover);}
+  .btn-sub{background:#fff;color:var(--accent);border:1px solid var(--accent);}
+  .btn-sub:hover{background:var(--soft);}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn-ghost:hover{background:var(--soft);}
+  .btn-danger{background:#fff;color:var(--danger);border:1px solid var(--danger);}
+  .btn-danger:hover{background:#fef2f2;}
+  .btn-sm{padding:4px 10px;font-size:12px;}
+  .btn-block{width:100%;}
+  .btn-build{
+    width:100%;
+    padding:10px;
+    font-size:14px;
+    background:var(--ok);
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:700;
+    margin-top:4px;
+  }
+  .btn-build:hover{background:#15803d;}
+  .btn-next{
+    width:100%;
+    margin-top:8px;
+    padding:9px;
+    font-size:13px;
+    background:#16a34a;
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:700;
+  }
+  .btn-next:hover:not(:disabled){background:#15803d;}
+  .btn-next:disabled{background:#9ca3af;cursor:not-allowed;}
+
+  .form-actions{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    margin-top:4px;
+  }
+
+  /* 指示書 縦スクロールリスト */
+  .instr-card{margin-bottom:10px;}
+  .instr-card-inner{
+    background:#fffbeb;
+    border:1px solid #fde68a;
+    border-radius:8px;
+    padding:14px;
+  }
+  .instr-card-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:15px;
+    font-weight:700;
+    color:var(--accent);
+    margin-bottom:8px;
+    padding-bottom:6px;
+    border-bottom:1px solid #fcd34d;
+    position:sticky;
+    top:var(--instr-title-top,180px);
+    background:#fffbeb;
+    z-index:5;
+  }
+  .instr-card-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--accent);
+    color:#fff;
+    width:22px;height:22px;
+    border-radius:50%;
+    font-size:12px;
+    flex:0 0 auto;
+  }
+  .instr-card-title .ttl{flex:1;min-width:0;}
+  .instr-card-copy{
+    flex:0 0 auto;
+    font-size:14px;
+    font-weight:700;
+    padding:9px 22px;
+    border:none;
+    background:#16a34a;
+    color:#fff;
+    border-radius:5px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .instr-card-copy:hover{background:#15803d;}
+  .instr-card-body{
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:13px;
+  }
+  .instr-card-img{
+    margin-top:12px;
+    padding-top:10px;
+    border-top:1px solid #fcd34d;
+  }
+  .instr-card-img img{
+    max-width:100%;
+    border:1px solid var(--border);
+    border-radius:4px;
+    display:block;
+    background:#fff;
+  }
+  .instr-card-cap{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:4px;
+    font-weight:700;
+  }
+  .instr-card-noimg{
+    margin-top:12px;
+    padding:10px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+  }
+  .instr-empty{
+    text-align:center;
+    color:var(--muted);
+    padding:40px 12px;
+    font-size:13px;
+  }
+  /* 指示書 進捗バー（11セグメント・一覧の高さに連動） */
+  .instr-body{display:flex;gap:8px;align-items:flex-start;}
+  .instr-progress{flex:0 0 30px;align-self:stretch;}
+  .instr-progress-bar{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+  }
+  .instr-seg{
+    flex-shrink:0;
+    background:#e5e9ee;
+    clip-path:polygon(0 0, 100% 0, 100% calc(100% - 7px), 50% 100%, 0 calc(100% - 7px));
+  }
+  .instr-seg.done{background:#8fb3c4;}
+  .instr-seg.current{background:var(--accent);}
+
+  .preview-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:6px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+
+  /* URL */
+  .url-box{
+    background:#1f2937;
+    color:#a7f3d0;
+    border-radius:4px;
+    padding:5px 10px;
+    font-family:"Consolas","Menlo",monospace;
+    font-size:12px;
+    white-space:nowrap;
+    overflow-x:auto;
+    line-height:1.4;
+  }
+  .url-box.empty{color:#9ca3af;background:#374151;font-style:italic;}
+  .url-box.stale{border:2px solid var(--warn);}
+  .url-section-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:4px;
+  }
+  .param-display{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:6px 10px;
+    font-family:"Consolas","Menlo",monospace;
+    font-size:12px;
+    word-break:break-all;
+    line-height:1.5;
+  }
+  .param-display.muted{color:var(--muted);font-style:italic;}
+  .stale-warning{
+    background:#fef3c7;
+    color:#92400e;
+    border:1px solid #fcd34d;
+    border-radius:4px;
+    padding:4px 8px;
+    font-size:11px;
+    margin-top:6px;
+    display:none;
+  }
+  .stale-warning.show{display:block;}
+  .url-badge{
+    display:inline-block;
+    font-size:10px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:10px;
+    margin-left:6px;
+    background:#e5e7eb;
+    color:#4b5563;
+    vertical-align:middle;
+  }
+  .url-badge.ok{background:#dcfce7;color:#166534;}
+  .url-badge.warn{background:#fef3c7;color:#92400e;}
+
+  /* メールプレビュー */
+  .mail-subject{
+    font-weight:700;
+    background:#fdf2f8;
+    border:1px solid #fbcfe8;
+    border-left:3px solid #db2777;
+    padding:7px 10px;
+    border-radius:4px;
+    margin-bottom:8px;
+    word-break:break-word;
+  }
+  .mail-body{
+    background:#fdf2f8;
+    border:1px solid #fbcfe8;
+    border-radius:4px;
+    padding:12px;
+    font-size:13px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    min-height:160px;
+    max-height:50vh;
+    overflow-y:auto;
+  }
+
+  /* 履歴 */
+  .stats{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .stat{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:4px 10px;
+    font-size:12px;
+  }
+  .stat strong{color:var(--accent);margin-left:4px;}
+  .history-tools{
+    display:flex;
+    gap:6px;
+    margin-bottom:10px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .history-tools input{
+    flex:1;
+    min-width:180px;
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13px;
+  }
+  .history-tools select{
+    padding:6px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13px;
+  }
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{
+    border:1px solid var(--border);
+    padding:6px 8px;
+    text-align:center;
+    vertical-align:middle;
+  }
+  th{background:var(--soft);color:var(--accent);font-weight:700;font-size:11px;}
+  td.text-left{text-align:left;}
+  td.url-cell{
+    text-align:left;
+    word-break:break-all;
+    font-size:10px;
+    color:var(--muted);
+    max-width:240px;
+  }
+  .row-actions{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;}
+  .row-actions button{
+    padding:3px 6px;
+    font-size:10px;
+    border-radius:3px;
+    cursor:pointer;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text);
+    font-family:inherit;
+  }
+  .row-actions button:hover{background:var(--soft);}
+  .row-actions .del{color:var(--danger);border-color:#fecaca;}
+  .empty{text-align:center;color:var(--muted);padding:24px;font-size:13px;}
+
+  /* モーダル */
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    z-index:100;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px;
+    overflow-y:auto;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:#fff;
+    width:min(760px,96vw);
+    border-radius:8px;
+    padding:20px;
+  }
+  .modal h3{margin-top:0;color:var(--accent);}
+  .modal-section{
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px;
+    margin-bottom:12px;
+  }
+  .modal-section h4{margin:0 0 8px;font-size:13px;color:var(--accent);}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;}
+  .placeholder-list{
+    background:var(--soft);
+    border-radius:4px;
+    padding:8px 12px;
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:10px;
+    line-height:2;
+  }
+  .placeholder-list code{
+    background:#fff;
+    padding:1px 5px;
+    border-radius:3px;
+    color:var(--accent);
+    font-size:11px;
+    margin-right:3px;
+  }
+  .params-row{
+    display:grid;
+    grid-template-columns:1fr 1fr auto;
+    gap:6px;
+    margin-bottom:4px;
+    align-items:center;
+  }
+  .params-row input{
+    padding:4px 6px;
+    font-size:12px;
+    border:1px solid var(--border);
+    border-radius:3px;
+    font-family:inherit;
+  }
+  .params-row button{
+    padding:3px 8px;
+    font-size:11px;
+    background:#fff;
+    color:var(--danger);
+    border:1px solid #fecaca;
+    border-radius:3px;
+    cursor:pointer;
+  }
+
+  /* ステップ編集 */
+  .step-row{
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px;
+    margin-bottom:10px;
+    background:var(--section-bg,#fafbfc);
+  }
+  .step-row-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .step-row-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--accent);
+    color:#fff;
+    width:22px;height:22px;
+    border-radius:50%;
+    font-size:12px;
+    font-weight:700;
+  }
+  .step-row-btns{display:flex;gap:4px;}
+  .step-row-btns button{
+    padding:3px 8px;
+    font-size:11px;
+    border:1px solid var(--border);
+    background:#fff;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .step-row-btns button:hover{background:var(--soft);}
+  .step-row-btns .del{color:var(--danger);border-color:#fecaca;}
+  .step-row input,.step-row textarea{
+    width:100%;
+    padding:5px 7px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:12px;
+    margin-bottom:6px;
+  }
+  .step-row textarea{resize:vertical;min-height:60px;}
+  .step-img-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .step-img-row input[type=file]{font-size:11px;margin:0;flex:1;}
+  .step-img-preview img{
+    max-width:200px;
+    max-height:120px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    display:block;
+  }
+  .step-img-preview .none{font-size:11px;color:var(--muted);}
+
+  .toast{
+    position:fixed;
+    bottom:24px;
+    right:24px;
+    background:#1f2937;
+    color:#fff;
+    padding:10px 16px;
+    border-radius:6px;
+    font-size:13px;
+    opacity:0;
+    transform:translateY(8px);
+    transition:all 0.25s;
+    pointer-events:none;
+    z-index:200;
+  }
+  .toast.show{opacity:1;transform:translateY(0);}
+
+  @media (max-width:520px){
+    .form-actions{justify-content:stretch;}
+    .form-actions button{flex:1;}
+  }
+</style>
+</head>
+<body>
+<div id="authGate"><div class="box">
+  <h2>アクセスを確認しています…</h2>
+  <p>少しお待ちください。</p>
+</div></div>
+<div class="sticky-top">
+  <header>
+    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519b</span></h1>
+    <div class="actions">
+      <span class="sync-status" id="syncStatus"></span>
+      <button onclick="openMemberDB()">会員DB</button>
+      <button onclick="openSettings()">設定</button>
+      <button onclick="exportCSV()">CSV出力</button>
+    </div>
+  </header>
+
+  <!-- 画面切替 -->
+  <nav class="screen-nav">
+    <button id="navWork" class="active" onclick="switchScreen('work')">発行作業</button>
+    <button id="navHistory" onclick="switchScreen('history')">発行履歴</button>
+  </nav>
+</div>
+
+<main>
+  <!-- ===== 発行作業画面 ===== -->
+  <div class="screen active" id="screen-work">
+    <div class="work-inner">
+      <input type="hidden" id="editId" value="">
+
+      <div class="subtabs">
+        <button id="stInput" class="active" onclick="switchSubTab('input')">1. 入力</button>
+        <button id="stInstr" onclick="switchSubTab('instr')">2. 指示書</button>
+        <button id="stUrl" onclick="switchSubTab('url')">3. URL・メール</button>
+      </div>
+
+      <!-- サブ：入力 -->
+      <div class="subpane active" id="pane-input">
+        <section class="panel">
+          <div class="panel-title">
+            <span>招待作成情報 <span class="sub" id="editingLabel">新規</span></span>
+            <button class="btn-ghost btn btn-sm" onclick="clearForm()">情報クリア</button>
+          </div>
+          <div class="section-desc">メイン会員（契約者）の情報を入力する。会員DBから呼び出すこともできる。</div>
+
+          <div class="member-picker">
+            <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">会員DBから選択</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="memberPickSearch" placeholder="氏名・会社・メールで検索" oninput="renderMemberPicker()" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;">
+              <select id="memberPickFilter" onchange="renderMemberPicker()" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:12px;">
+                <option value="unissued">未発行のみ</option>
+                <option value="all">全件表示</option>
+              </select>
+            </div>
+            <div id="memberPickList" class="member-pick-list"></div>
+          </div>
+
+          <div class="field">
+            <label>メイン会員 氏名<span class="req">*</span></label>
+            <input type="text" id="name" placeholder="山田 太郎" oninput="onFormInput()">
+          </div>
+          <div class="field">
+            <label>メイン会員 会社・所属</label>
+            <input type="text" id="company" placeholder="株式会社○○" oninput="onFormInput()">
+          </div>
+          <div class="field">
+            <label>メイン会員 メールアドレス（ParentMail）<span class="req">*</span></label>
+            <input type="email" id="email" placeholder="example@example.com" oninput="onFormInput()">
+          </div>
+          <div class="field">
+            <label>登録可能人数<span class="req">*</span></label>
+            <input type="text" id="availableInvites" placeholder="例: 4" oninput="onFormInput()">
+            <div class="hint">プラン記載人数 − 主会員1名 − 既存サブ会員。OneStream「人数を制限する」に入力する数値。</div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>備考（社内メモ）</label>
+            <textarea id="memo" placeholder="経緯・特記事項・濱村氏確認事項など"></textarea>
+          </div>
+        </section>
+        <button class="btn-next" id="goInstrBtn" onclick="switchSubTab('instr')" disabled>指示書を見る →</button>
+      </div>
+
+      <!-- サブ：指示書 -->
+      <div class="subpane" id="pane-instr">
+        <section class="panel">
+          <div class="instr-sticky-head" id="instrStickyHead">
+            <div class="panel-title">
+              OneStream操作指示書
+              <button class="btn btn-sub btn-sm" onclick="copyAllInstr()">全文コピー</button>
+            </div>
+            <div class="instr-head-row">
+              <div class="instr-counter-box">
+                <div class="lbl">進捗</div>
+                <div class="num" id="instrCounter">1／11</div>
+                <div class="pct" id="instrPct">（0％）</div>
+              </div>
+              <div class="instr-note">上から順に手順を確認しながらOneStreamを操作。各手順は個別にコピーできます。</div>
+            </div>
+          </div>
+          <div class="instr-body">
+            <div class="instr-progress">
+              <div class="instr-progress-bar" id="instrProgressBar"></div>
+            </div>
+            <div class="instr-list" id="instrList" style="flex:1;min-width:0;"></div>
+          </div>
+        </section>
+        <button class="btn-next" onclick="switchSubTab('url')">URL作成・案内メールへ →</button>
+      </div>
+
+      <!-- サブ：URL・メール -->
+      <div class="subpane" id="pane-url">
+        <section class="panel">
+          <div class="panel-title">招待URLの整形</div>
+          <div class="section-desc">OneStreamで発行した招待URLを貼り付け、配布用の完成URLを生成する。</div>
+          <div class="field">
+            <label>招待ベースURL（OneStream発行後にコピーして貼り付け）</label>
+            <input type="url" id="inviteUrl" placeholder="例: https://one-stream.io/join/user/xxxxxxxx" oninput="onFormInput()">
+          </div>
+          <button class="btn-build" id="buildBtn" onclick="buildUrl()">URL作成</button>
+          <div class="stale-warning" id="staleWarning">入力が変更されました。「URL作成」を再実行してください。</div>
+
+          <div class="field" style="margin-top:10px;">
+            <div class="url-section-row">
+              <div style="min-width:0;">
+                <label style="margin:0;display:inline;">完成URL</label>
+                <span class="url-badge" id="finalUrlBadge">未生成</span>
+                <span class="hint" style="display:inline;margin-left:6px;">配布用URL。日本語部分はエンコードされ記号で表示されます。</span>
+              </div>
+              <button class="btn btn-sub btn-sm" onclick="copyFinalUrl()" style="flex:0 0 auto;">コピー</button>
+            </div>
+            <div class="url-box empty" id="finalUrlBox" style="margin-top:6px;">（「URL作成」ボタンを押すと表示されます）</div>
+          </div>
+          <div class="field">
+            <label>固定部分（日本語のまま表示。実URLでは自動エンコード）</label>
+            <div class="param-display" id="fixedPartDisplay">－</div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>変動部分（メイン会員情報から組み立て）</label>
+            <div class="param-display" id="variablePartDisplay">－</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            案内メール
+            <div class="title-actions">
+              <button class="btn btn-sub btn-sm" onclick="copyText('previewSubject')">件名のみ</button>
+              <button class="btn btn-sub btn-sm" onclick="copyText('previewBody', true)">本文のみ</button>
+              <button class="btn btn-sm" onclick="copyMail()">件名＋本文</button>
+            </div>
+          </div>
+          <div class="mail-subject" id="previewSubject">（件名）</div>
+          <div class="mail-body" id="previewBody">（本文）</div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 発行履歴画面 ===== -->
+  <div class="screen" id="screen-history">
+    <section class="panel">
+      <div class="panel-title">発行履歴（蓄積データ）<span class="sub">CSV/JSONで書き出し可</span></div>
+      <div class="stats" id="stats"></div>
+      <div class="history-tools">
+        <input type="text" id="searchBox" placeholder="氏名・会社・メール・URLで検索" oninput="renderHistory()">
+        <select id="filterStatus" onchange="renderHistory()">
+          <option value="">全ステータス</option>
+          <option value="draft">下書き</option>
+          <option value="ready">発行準備済</option>
+          <option value="sent">送信済み</option>
+          <option value="registered">登録完了</option>
+          <option value="expired">失効</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="pullAll()">再読み込み</button>
+        <button class="btn btn-ghost btn-sm" onclick="if(confirm('全履歴を削除します。よろしいですか？'))clearAll()">全削除</button>
+      </div>
+      <div class="table-scroll" id="historyContainer"></div>
+    </section>
+  </div>
+</main>
+
+<!-- 会員DBモーダル -->
+<div class="modal-overlay" id="memberDBModal">
+  <div class="modal">
+    <h3>会員DB</h3>
+    <div class="modal-section">
+      <h4>CSVインポート</h4>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">
+        ヘッダ：氏名,会社,メール（順不同可。「氏名」「メール」必須）
+      </div>
+      <input type="file" id="memberCsvFile" accept=".csv" onchange="importMembersCSV(event)" style="font-size:12px;">
+    </div>
+    <div class="modal-section">
+      <h4>手動追加</h4>
+      <div class="row3">
+        <div class="field"><label>氏名</label><input id="newMemberName" placeholder="氏名"></div>
+        <div class="field"><label>会社</label><input id="newMemberCompany" placeholder="会社"></div>
+        <div class="field"><label>メール</label><input id="newMemberEmail" placeholder="email"></div>
+      </div>
+      <div style="text-align:right;margin-top:6px;">
+        <button class="btn btn-sm" onclick="addMember()">追加</button>
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>会員一覧 <span style="font-size:11px;color:var(--muted);" id="memberCount"></span></h4>
+      <input type="text" id="memberSearch" placeholder="検索" oninput="renderMembers()" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;margin-bottom:6px;font-size:12px;">
+      <div id="memberListContainer" style="max-height:40vh;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportMembersCSV()">会員CSV書出</button>
+      <button class="btn btn-sub" onclick="closeMemberDB()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h3>設定</h3>
+
+    <div class="modal-section">
+      <h4>固定値（案件ごとに変動しない設定）</h4>
+      <div class="row2">
+        <div class="field">
+          <label>招待URL終了日時</label>
+          <input type="text" id="setDefaultInviteExpiry" placeholder="2026/12/31 23:59">
+        </div>
+        <div class="field">
+          <label>アカウント有効期限</label>
+          <input type="text" id="setDefaultAccountExpiry" placeholder="2027/05/31 23:59">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>登録可能人数（デフォルト表示）</label>
+        <input type="text" id="setDefaultAvailableInvites" placeholder="例: 4">
+        <div class="hint">フォームの初期値として入る数値。案件ごとに変更可能。</div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>担当者名（案内メールに反映）</label>
+        <input type="text" id="setStaffName" placeholder="例: 魚井">
+        <div class="hint">案内メールの名乗り・署名に入る名前。担当者が交代したらここを変更。</div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h4>クエリパラメータ：固定部分</h4>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">
+        OneStream側で「入力不要」にする項目等を指定する固定文字列。先頭の <code>?</code> は自動処理。
+      </div>
+      <input type="text" id="setFixedQuery" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;font-family:'Consolas',monospace;font-size:13px;" placeholder="?郵便番号=---&住所=---">
+    </div>
+
+    <div class="modal-section">
+      <h4>クエリパラメータ：変動部分</h4>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">
+        メイン会員情報から動的に組み立てる。<code>{{email}}</code> <code>{{name}}</code> <code>{{company}}</code> 等が使えます。
+      </div>
+      <div id="setQueryParams"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addParamRow()" style="margin-top:6px;">＋パラメータ追加</button>
+    </div>
+
+    <div class="modal-section">
+      <h4>指示書ステップ</h4>
+      <div class="placeholder-list">
+        プレースホルダ：
+        <code>{{name}}</code><code>{{company}}</code><code>{{email}}</code>
+        <code>{{available_invites}}</code><code>{{invite_expiry}}</code><code>{{account_expiry}}</code>
+        <code>{{today}}</code>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+        1ステップ＝指示書の1カード。各ステップに画像を1枚添付できます（最大5MB）。↑↓で並べ替え。
+      </div>
+      <div id="setStepEditor"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addStep()" style="margin-top:6px;">＋ステップを追加</button>
+    </div>
+
+    <div class="modal-section">
+      <h4>メールテンプレート</h4>
+      <div class="placeholder-list">
+        プレースホルダ：
+        <code>{{name}}</code><code>{{company}}</code><code>{{email}}</code>
+        <code>{{available_invites}}</code><code>{{invite_expiry}}</code><code>{{account_expiry}}</code>
+        <code>{{final_url}}</code><code>{{staff}}</code><code>{{today}}</code>
+      </div>
+      <div class="field">
+        <label>メール件名テンプレート</label>
+        <input type="text" id="setTplSubject">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>メール本文テンプレート</label>
+        <textarea id="setTplBody" rows="14" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:'BIZ UDPGothic',sans-serif;font-size:12px;"></textarea>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h4>設定のバックアップ・復元</h4>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+        テンプレート・指示書ステップ・クエリ設定などを保存／復元します。発行履歴・会員データは対象外（スプレッドシートで管理）。
+      </div>
+      <button class="btn btn-sub btn-sm" onclick="exportSettings()">設定をバックアップ</button>
+      <button class="btn btn-sub btn-sm" onclick="document.getElementById('importSettingsFile').click()">設定を復元</button>
+      <input type="file" id="importSettingsFile" accept=".json" style="display:none" onchange="importSettings(event)">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost btn btn-sm" onclick="resetSettings()">初期値に戻す</button>
+      <button class="btn btn-sub" onclick="closeSettings()">キャンセル</button>
+      <button class="btn" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_KEY = 'cs_invite_records_v3';
+  const SETTINGS_KEY = 'cs_invite_settings_v4';
+  const MEMBERS_KEY = 'cs_invite_members_v3';
+  const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
+  const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
+
+  const DEFAULT_SETTINGS = {
+    defaultInviteExpiry: '2026/12/31 23:59',
+    defaultAccountExpiry: '2027/05/31 23:59',
+    defaultAvailableInvites: '',
+    staffName: '魚井',
+    fixedQuery: '?郵便番号=---&住所=---',
+    variableQueryParams: [
+      {key:'ParentMail', value:'{{email}}'},
+      {key:'ParentCompany', value:'{{company}}'}
+    ],
+    instrSteps: [
+      {
+        title:'対象の確認',
+        body:'契約者：{{name}}\n所属　：{{company}}\nメール：{{email}}\n\n【操作場所】\nOneStream 管理画面 → ユーザー管理 → 招待 → 新規作成',
+        image:'', imageCaption:''
+      },
+      {
+        title:'① タイトル',
+        copyValue:'親メールの招待',
+        body:'「親メールの招待」と入力',
+        image:'', imageCaption:''
+      },
+      {
+        title:'② 登録可能人数',
+        copyValue:'{{available_invites}}',
+        body:'「人数を制限する」を選択し、「{{available_invites}}」名を入力\n（プラン記載人数 − 主会員1名 − 既存サブ会員）',
+        image:'', imageCaption:''
+      },
+      {
+        title:'③ 招待の有効期間',
+        body:'「即時有効」のまま（変更不要）',
+        image:'', imageCaption:''
+      },
+      {
+        title:'④ 終了日時',
+        copyValue:'{{invite_expiry}}',
+        body:'「日時を指定する」を選択し、「{{invite_expiry}}」を入力\n※キーボード入力推奨',
+        image:'', imageCaption:''
+      },
+      {
+        title:'⑤ アカウントの有効期間',
+        copyValue:'{{account_expiry}}',
+        body:'「有効期限を設定する」を選択し、「{{account_expiry}}」を入力\n※キーボード入力推奨',
+        image:'', imageCaption:''
+      },
+      {
+        title:'⑥ 参加グループ',
+        copyValue:'2026年度会員\nA国内サブ会員\n＜管理用＞閲覧可能会員\n',
+        body:'・2026年度会員\n・A国内サブ会員\n・＜管理用＞閲覧可能会員',
+        image:'', imageCaption:''
+      },
+      {
+        title:'⑦ 入力項目',
+        body:'【基本項目】\nON（紫色）：名前、カスタム項目、URLによる自動入力\nOFF（グレー）：電話番号\n\n【カスタム項目の内訳】\nON（紫色）：\n・所属企業・大学・組織名\n・所属2（部署・学科など）\n・役職\n・郵便番号\n・住所\nOFF（グレー）：\n・大学卒業予定年',
+        image:'', imageCaption:''
+      },
+      {
+        title:'⑧ アカウント作成を承認制にする',
+        body:'チェックを入れない（無効のまま）',
+        image:'', imageCaption:''
+      },
+      {
+        title:'⑨ 備考',
+        body:'必要に応じて入力',
+        image:'', imageCaption:''
+      },
+      {
+        title:'発行後の作業',
+        body:'1. 上記設定で「招待を作成」を実行\n2. 表示された招待URLを本システムの「招待ベースURL」欄へ貼り付け\n3.「URL作成」ボタンで完成リンクを生成し、契約者へ案内メールを送信',
+        image:'', imageCaption:''
+      }
+    ],
+    tplSubject: '【Cosmetic Science デジタル版】サブ会員 招待URLのご案内（{{name}}様）',
+    tplBody: `{{company}} {{name}} 様
+
+平素より大変お世話になっております。
+Cosmetic Science 購読事務局の{{staff}}です。
+
+このたびはCosmetic Science デジタル版をお申し込みいただき、誠にありがとうございます。
+ご決済を確認いたしましたので、サブ会員の招待用URLを下記のとおり発行いたします。
+
+────────────────────────────
+■ 契約者情報
+  ご契約者：{{name}} 様
+  ご所属　：{{company}}
+
+■ 招待URL
+  {{final_url}}
+
+■ 有効期限
+  招待URL使用期限：{{invite_expiry}}
+
+■ 登録可能人数
+  サブ会員として招待できる人数は {{available_invites}}名 となります。
+────────────────────────────
+
+■ ご利用方法
+  1. 上記の招待URLを、貴社内で閲覧権限を付与したい方へお送りください。
+  2. URLを受け取った方は、リンクから登録フォームへ進み、必要情報を入力のうえ登録を完了してください。
+  3. 登録完了後、すぐに会員ページよりコンテンツを閲覧いただけます。
+
+■ ご注意事項
+  ・本URLは登録可能人数の範囲内で繰り返しご利用いただけます。
+  ・有効期限を過ぎますと招待は無効となります。
+  ・URLの取り扱いには十分ご注意ください。
+
+ご不明な点がございましたら、本メールへのご返信にてお気軽にお問い合わせくださいませ。
+
+何卒よろしくお願い申し上げます。
+
+──────────────────────
+株式会社ソフィアリンクス
+Cosmetic Science デジタル版 事務局
+担当：{{staff}}
+──────────────────────`
+  };
+
+  /* OneStream操作画面スクリーンショット（指示書ステップに自動添付） */
+  const MANUAL_IMAGES = {
+    "1": {"cap":"OneStream：タイトル入力欄","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAA4CAMAAAAW03adAAABgFBMVEX+/v7s7vDn5+i1vMW3xtTI2ebq8vfX4urX19fGxsm4wcuruMXJ09vZ5/L07eiZl6Xn4d738u3i29fW3ePFzNOnq7eVo7nSyMWxtLuEl7OLlqeXkZ6WqsR6iqShmaO80uamutHZ0sz71diVjJmRnrWLi5rRztG4rq/l1c6msL3t8O/wOk/Sw7/2n7jBur35pp7AvsaOor73oKv6y9mDi6D2naX80cp0j7DM4fB1fpZvf5xjZntfcZEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACE59U6AAACbUlEQVR42u3bWW+jMBSG4RPbLAYSIEC2Nm26zb7v2///XXMMpDMXqdRUqjQjvY+U1li5Ovp67AIWAQAAwGOLKQEewcXWmH225ovws4uGK+PETvvR5YdLCoWj1DfbxWY7JGv53YVf5RisdC0nw/Dty9dUCkc52Wmg1n2DKn8M/enkdLLvX2PGvnz+SKVwjLNdem1CfJ6Um/J0nNturkOgLk5vmxdwHCPif37VwcrJs8UwV0azVRguNVhT6SZUCQ/x5tNm6EvLfbDOx1XyXMri7D0VwgP4m/X+jsOr9TB1NQTrqV5e/dpRIjxE526H83H4btjDtxq3NKFCAAAAAAAA+BdMgHs6Klf8aUHu/2CZXAEAAAAAAADKTOq0SY3UhUhDOXBHTDJbiLFZrIMoDMIbyTOr56Ct7d9XNvlUP5keujA+d3pb1bdiXapHpROTLRwvMOOwuM5jO9WX3uNZvj9Xb79VbpaP9+ZXkfgQscqmNrGTcFrMxzMnpmjSvDFUEIfV1mSiodI+JbZo+2DFkmnzGo6G+UQubKsdLKRJA5gWaSTa2KxriiIvKCAO85HYECqxUf088c44k8UhW7NVkhZ9sPTMTh678E3jXnS6Dra6DnaRRqwjWDhMd0uaosrJMgy0dcWNroihg2mQjIbKh+UxrJeF7VPop1Uk+v15VLk641k2DqrKLItT3azPN2EQdvBhOxV25j7vg9flcet0usqnJuznfTJ32thEF8Qi9Dbg4L+FoSuZyV+DflI/yTg0f6aTsCWLjWvaqL/wjgICAAAAAADhlA5IFuR/O1eo7zVwwBf3w/MVAAAAAAAAALjDbxCGGxOFBB0aAAAAAElFTkSuQmCC"},
+    "2": {"cap":"OneStream：登録可能人数","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAbgAAAB/CAMAAACqjic5AAABgFBMVEWil5xcWGHV2N3axrVWb5c4TWrDrJafinhlhKOeutknKDIwNUKu1PAghtWAcG7CvsJNoN3An30RftJbRj/+/v7m6ezq7fDp9vuHh5fW6vfY19n89Opnd5aHpcd5g5q4qafIxsiDjKP36NnG1+eIlKiZlZrm1si0usV4k7bFuLfFytR2dojX2+S7wcuWmKZ3iKUkKDWFmLWYt9e3x9eml5p1e5aZpbeotMb17OSpyeXK5Paqpajm2tS3tbijqbcqM0DI0drY4uljbIbVycSmwtq71OmWjJa52fKEe4mHgY3axbpqcovItKwcJTWWq8YAdM6ku9VrhKbt4tnb8vxYaIrQuKukmqR8kaz/8NoqMT0Aa8vDraaEvehnfaKKory0zONoZ3vUvLVac5bY0cp5nMFzjLJ4tuWIrNKrsbx8fqJssONoiLBbp+BHnNx8o8qMstWFnsFSWHZZZXf84820rbM6ldqZsslzboKbyOw1LTFWod5mreJHXYJJYoa4oJ6VnrGpkEKJAAAJ6ElEQVR42u2d+XfaSBLHsZ1Mkskce7TQiQ6QAAkQpwBzmcMcBoxt4tjj+IydOE4m971JZvKvT7ckjOftbvyLWePZ+j4ekrDE49XHVV2SqkseBLqS8oAJABwIwIGmBRwFpp40uNlYzOAqtD9HNhpCAHGhWCzNIuR1RSMa/0XaR8ifHB/WqDnLYTSY4tNIXz3zlcEbMzMzr3Ng7UmC48uh8ut5aVPdp2jEMxWreRQKhZZeoGBEdGT14izyW7TefLNLyQrrftELZ+lP6nvlFGrNj7/yu++XE/i1fEiDvScHLm8GdOxIndRQLCAthboDCoNjUgjVKEeZMIWo1lo1c43rKcmqe1znubOURFEQk1xnM+txnW7uX8tbC69ntraWb4K9Jxgq/ZHfVg1DqgsFFOwpisryhlFtpcg4FY1GcUDc9iGki+rXimquYR/iHEed+dU5nJMPvgyqupAur8+7f1leSFxDc4mFrduLYPDJeVxx08AuFpOZLA6C3XitlK2cnHTwWOePCKK43kSSj0CsVqtRPAJyDcuOlf6DwzvO8RtM3Ex7rqE38ZHDLSwkroduJPACXG5i4Hhtj4vZ4rQUXzGFbC5mMA+NEAYnYjR47CLg+M5eSAujDTzkOQGxv6k5Dlbc7/qQZImF+27m8h12tcRm+ScC7guMchPzOBplkkYsJnduYTwxKZ6rvmW3H/AmzkcYbPaMC27pvZx5kN87PWxpvrtmr0RLkVVKntWzLkjkIeBuohvLGNwMgJvgeVzL9qEMCYhyIyvvBwfSb2oaR0MxzXHWCNyqUfSVhOhba5/s3RVoPjJve2xdUOprrP/Drgvprh0q6b8TjzsEg08QnLQeVxRmnSQSbyvZSgFxG0LSzlriqqqyLrhsSHs5rMdz9umbDa17jbX3avMkps48GCU7/1zeSvjQm5nE1vILMPgkr5xkcAppZyCIaig5rpg0U54wjfInjg9tO6HSKL4skaxSZvGIF7aPI+SCihrBO0g9nJWOBrnEwuvIzO2t73+DSDk5cBQXldaiR5FFjvPyRY+gmnvezAvUGmXyVI0EUZ65g/rhoRCocdZsMBJ2ia+nESUvCfGctuvt4wTU0Y0EPvvGr+sFsPfkwMlmtpLFqmS/BvhQ2hnAmuOsk6njMwPEm3f0+iIqCpbgQ/rpxSx9gCR1FpXMJG1vjHxu5nZi4brIgrmv3EVmrhzzgrHhtg4IwAE4EIADATgABwJwIAAH4EAADgTgQADu/wGcLMtnN6nA2S3OXcCttWkDJ2vFclE7g67z6HQ1mBw+xsT4KN8p8Eyc2ZMtRVGsVbDjFNyP00iZPzUm9/s1VVSZuGolWbS9ztRVpRl8iBj2F4uVfKR2FmWegx0vH5zmTM+gtNEOB2HUKvRvlURSkZ5uWIEoHQwTcHF6o9CNp3EFpg/seOnguKK7UnQHM1lXa62AJxUUa2gopstCWg4c2eAUOYnux3EFJvMI7Hjp4OSyu1J2Y+Vbps7UxYiA3xbzlYrZy1ZWXXA1E1e94skEGoTKKfQ4FFRpz2x/tURq7vKcblVHofIxPedr1Bk8v2Ae7DgFYxz35zEOzW4iD6vP+0VSx4wdT4mknOTkMe1Plgd4LTgAO14+OM4mx2kjh5tTRZNRPaopqgG00fYr6H7KP+BJqKy2fPpL1LfUANhxCs7jOK1YLJ5yw1NNAxSHiy29P+OZcBtNAm5AqvQwuIBB3/chvt4GM07HlROO485sLc3zcXo2ju7jsmUCLhYhc+WYwi/kVFyKl7PSLhRMTuG1yu2HxL14poBaPkTRs49rBo2nUQm037qDdCueMxCQm0Zw5KIkZb/4KNm230ox1l5zeylASwW4OwACcAAOBOBAAA7AgQAcCMCBAByAAwE4EIADcGjczwt09cCxn599+ttn9j92VPaiWRa/yf9+G4enS859cMoAo14KuPa7jzRNf3z3p9vajFsOpC9uLEpNPnIHjSqbR3tIi31S61Viu7/ihjZqL1cUcEOw07ZQUspd4QxZjoWg1uHCwdHvCuynHz+xhXdn4iX/4ZazlOKMKgaCQtowWMRVcoyQqyh226GOEBGUTfr3FK4A6z9ATIB0PeQ7bYLKMOTOWi6XI34qKWaWuZ4Cw180uJ0d+sd7K/f+Qe/sjD/MHzi1yv5K8dVhJScJ2SXcqOvI1Nb3KqEqIdxIeqUHFIUdD4O768Pt0TPhUKjcK6ChpppfKxFBVRXXz4YMdPi9eHBPCzv3VlZW7u0Uno4/DI4aLqNiXRxQPz1HfZuk2wQW3yTvb4Zaa6Fc1AWHI6Pmw44WcUMllxn7WEOEQDkJcOwTG9wT9gy4vijaBPIMHuNkpvfQ7oyISgdxMx6QGdzNngsRcCcBF1wJe9wgGj36YI+Ufkatn3aqlF5tZrOA7sLBPfmhbYNr//AEnSn08jjTAyg/wyK9alZx7RAaRnw0v7Supp2kQwsbgVGoRMV0Zo0RzKSdfmYe4abc7pCZOczVouUIDHIXDa79DB2v3Fs5Rs/GaeWcQAcFkkiWmN46YyXRdo80qMS9SP1Mzx39Iioexg5ZOznB4PSBp/0mjDtru12C7wo2uPxS2F4GBagLu+jTgeOniG2z6PPY4XjiHx67U68usPpuDflfOacHfmsflzLbayq6+wiZs40mAbeHHzuwMY9aNwc2puGSeOAMkvkchk+SlA4U0V74Cfjxs535nWfH4w8yxOj5DyS6SUKMpPnSK8fPtsOolHbB0X0MDiPpEo+LRpHWRt3TZ7I06qN5IXmryVkFx4FBF3vJi/14/HEcyfIep5156SDpxX17D768pzK7VWeQ6gq3jKoRwjv7Fbrvk0gAnHtIQiUOikkzpzmBkSpHTqc+5pkU1+oJML9n4heZM2HXbfwdH28qq9RGBCcapZ49eskMeUpS074otu0r1TCXuo+cgPNaPIufgNWygTWs9Pj7hqaiZGtg+P/t3YEo/d/rlvN2714uMFpDzsVNENzWAQE4AAcCcCAAB+BAAA4E4EAA7i8EzoubPHmvhCjaS3kBnKsrZgqKAnBXs4MCgLuqdqAA3NU0gxfAgccBOAAH4AAcgANwAA7AATgAB+AAHIC7cMk1AHcuuGm0iR4AcOeAk0/K2embVFNuArhzwOE5wvrUPWAsf5IGcOePcaX30/Z7S7EYDeDOBTe3OH25yVEAwJ0Hzp+dtmls+RB+0QDu2+D4SnMac8pGGsB9G1w5PW2/1mbGlwMA7lvgpM1cJTdV/dhk5+fky1UA9w1wVC0ajU6Xv7n/RvzPVQAH1yoBHIADcAAOwAE4AAfgAByAA3AADsAhmDsA4MDjYH7cXxuc92pZgqIB3Hh27lWRl6Jg8j4IwIEAHAjAATgQgAMBOAAHAnAgAAcCcAAOdIng/gBVrvmYQ44CvQAAAABJRU5ErkJggg=="},
+    "3": {"cap":"OneStream：招待の有効期間","img":"data:image/png;base64,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"},
+    "4": {"cap":"OneStream：終了日時","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQ4AAACECAMAAABWMzWdAAABgFBMVEVbWGJfb5OjmqDj3dYmJSjOtKmUrc5dqOAqN1AzS2rfx6qv0eqPbVsVf9LDvcBAODmHfZZpgJ8fh9X+/v7m6ezp9frW1tiIk6bX6vamq7f79uqHiJiZp7d6hZu3tbe1u8R1e5XG2ei61Oiot8fX2+P06+VoeJeDiqPIxsfK5fiVmKanp6jm1cp3iaeWrMS4p6b159rUysZ1donZ4urHurfn7fLK09tZZ4e3ydmGpsiVipeFmrjm2tXFytSku9OosbzYxLmpwtn+891qc4plbIe7wsqZlpja8/1JSUkCAgKasch5lrfp4tomKTYdJziYt9anmJlnZ3zb0svCq6YAa8vIs6trg6a01/HE3fGzzOQAdM7Mwr13m8F9kazizMNVW3dUVFR0i7GEeYd3tuWVg4uZoq16ocZZapJtk7t7faKXxelTot5Hm9ylmaNLYYRoh7PhzL1lrOJbp+DM4O4pMT4oM0OLsNKFvehmfKQ7ldoUGyqpyeap0e6MkJ2Ih4prb5R0eQWDAAAJnklEQVR42u2ch3fayBaHcU2y2fLeGxVUEAIhIXovBmywDTgx4N5SHKcnm7bpvfzre2cGYZzNy9k9fsd5yDNJACmD7Pl0751yfyMPYmWoeBgChoPhYDgYDoaD4WA4GI4fj4PD//jvfoHLDR0I9izvXhxyNojk9Y4QQjUlDEUUywhlfKTMoW40rOaE22NFB0jD05tc8cy5FYfc3o+eX3siHvyBap9EUYxmz91FaHMMPooH99HTe1GrrjdL1gyt/tNvK688Z3tnV92K4+bifqz0bz/YCCnx9Q68pv7An2/fR40bE1/KYB2BEK3tWek9QT+v9M55Xeos8aY4x4+fvUqPUgfEDDbfBgRBuNlB8dJiU9F92YMEiRc/Tb7seTRP7+XKqjtxpG+WFnei1p1sh9xvD8Wy7VmEcnAVxa07VjAUSpWo8UwBiPuyp/dq5a5LnUXL7kiqpPrDAXx4k8aIIWfpNn2Wb/Gg07eOV71z/M8rL1deuzWUWs0Z1H1cpYdf4wBnuVfUI0/vLVFbgtixg8Z7vbMRd+KIZxXR0Cw1QOGMURybT0TocsFznpaWy6jy2sGBpiZXznk8vZWOS3sWs1gBArZSmsdGUXoyT3Hck6CsX0XmBD7Mr791Rl7jv71///5Vx72jUoH0oQKOpDV/YHgY2nXGXqb/sF/txqJ3AmzOwqZwDAfDwXAwBAwHw8FwMBwMB8PBcPwYHFo7FtOGJ7lHZmhC/40/HTi4tsYhTmtzgzO3ZwYfa9WuDhzkkHwzIlcSSjXjg9yDvupeHG16+4W2cyI1Jiqikoj6ql60XVKaYjgYTyAlsqDnUjN5vGq2dte1OOyY4zI2fc+v3+ArL7ZXa74lJCvljB4U+PgNjCPMPz7fSJRnZ5UZ1+KICU6M6HOx82JuPJAHHF6UVsqaXp4N9HHYImroLb//NODg+jg0pak0fVkLXuZlSYo2VcnY6BAcuWikkeA4zsXO4vjIwDpQfL/gWAeSBVuHBBy1jt/5azOZprIY9s27FscghA7MJL2PxiON6bQPupQ1SyklFlcnEhTHQlWbRpVIPOneniVGrUJzjOOK6Isq4icx6hMD6HFwIYymltNJ4izFSufXKtr2hYMuHoZpbU2w27HBcabICZwQ4mwQNjwOpsOoAcYgExwtvjEN6oegq0elghbThMPDygc5wcNIo7HDo8eX0uFWFo+6iLNAAiahqam33tMzZ9lOYFOAvwjyURN8+vdAmUeabi0t6EsoryeSZZSyvKcGh1Ag+igOD83xMXmp+XPkU180xbEZLZvgMxwMB8PBEDAcDAfDwXAwHAwHw/GjcPAMxyGLW2cenrk1RIQTSMnhmazdwjPaqLPgY84OakUDaHvVmfFC2Zw+Mi8OjCiOwrs3Xq/3wSPvoQ4Z72URP1l7sBSUUBKCJC3uSwbhld/huVlas7KHNjv+mF7lURckufWsZUjSdK5/kcFiuyaGRaWUHBkczx94H/3yLvLxoXPiGt2rIeuwCyrqTYcntHq2U/fDRqdF2OfjC4v4xgtSthrYttRyARY/pkqGnxRt8TUyYwBAbJZ03bqEK86GuLYVGBUc3of8f7Yub/3CP99zcIjkTVYIjoUwqNGVB9SLGgnHhjJiMzGfwv5h+pYaHcRxhQLHobXXSLaLoRyXuspxob4Dpqr8yDjLx1u7W5cvX976eP7BX3GgynhMvxONQpYa75AD32nBmy1iKJUIiuuwX06HrC2XD4u6JSrJ/mpZJpodZLUh010sjAyO3Vt7BMfuGwdHfN3SoWRLYOGVahQvGKP0mJco+JO2sq8kyMbASnIWmaFQiEQLs4BSh5nKxk5grepI2LMlVVUS3hHBUXjEP9ra2nrHD2Jp3FfEHcsGjR3yv0RsAiUIBPmxCNrIjpE4IERLlnHFByFXwXBSc2iqCunKfhydRhNW304Wl4m/7PAjEkpvPePfPHwDvS066ixI6YfSohEI2V9gOV3YQ6lElHYSeVWHoxkgMI6t4vMHlG+CCoKGzLzVao+R9qeBqVDEu1N3R2Xc8ezhbmT3+TP0DRy4o32L1lbRgk5ad83ipxwvqATRtgXWkQUcadhQODWU1s+L61edAV4qrFR5ORsZmVHp7pnnz4ZuXtwHEo7ZWdsC61DmYD+xqXtxjgXK9g541yGOzSRYB44ZqX1lNTU8tsgPMjHp7BJaS67dGNk5S3ydbrHGmyO5/lhU+0JwmIrlU3x4PCHb4AZk8/H6DGpYS3LFYxmtFt0elMkODTRSejhb6vAji6Nm0PehHU4py9llLoDdFKFtafAA1DAg5GrzKE/GW37okaPzXw3l8fVmBzvW2YyWTfAZDoaD4WA4GA6Gg+Fg5b/hgGUslxf+nzwoy/1phQL39/eznAqH4P7uahhiOE6dcXy3nQwHw8FwMBwMB8PBcDAcDMfI4DC/MTH6f235BRvyP572sXGYhaFzRy/g578+VSt/46dwhW//8BM0Qm7y4sVJ+HPx8zFx/GrUsQRMM+peVKv74SmVglqvq7jZaUjDdaU6JOg21LpKlHN2BCRRfvUFVkaVHWgGrpKp+6V+Co/WNuuGcWIKD+1iv1w/Hg4ZconSJZSZQxvL+JGMGyqPCjyn4oZkIOkqBZAGKo95qruUwV7AFjKQqea0OefxllAriEAFlV+m+kxaWwviS55QiV2gysf29ePHDnsOSREkk5srq7jdmfl+whb2FuP8bb4vquxSiyA7rjNDDwq/QupnoPXaMgEBRYKEt3RS5hHrY9AuHB8H/Pr495awHCOOb6iMm4JMg6ayJ5Jw3/3EXmycpDdb1HaGcIANIc6f5OlTPjVSW9pD5p3I6OGAey0PcOCGUSZoA0whDjiwhfDITjqx1WyRSkM4NvD/df31F4fmkkQ11fCro4fDVCkKgoQGhCuOr2DLQLVlWo1HaWPoK4c40ir1ia7KH57ikZyTR89ZTHKr8x9IC2zD8R4cNkkoWcJwoJlxFQgE6ZflIzhMYlYFygBX4fvRBZ3cUx1ikzYuwudj4jCjVUMy4H63oHe4kjDqElh8LOgMMVBGbam8KRkt/JxoIobRDFuaB1ixcdqPkivMc3XDVi+RXsWU/Lh2xmipJ9bRctcv0BI7pnWEckQmamK1DgeSUSwbJmkHmyqSa1j3IwtFL42tUIQiVuj3q9IrYGm/MND7mALR2Ao/XGn7vxyk239JxXQDbArHpnAMB8PBcDAcDAfDwXAcBwfPM0EDk7t8RwzlfsULx/0T5aDrpXKICSkR05UyHAwHw8FwMBwMB8PBcDAcDAfDwXC4D8efANM6HvwMmF4AAAAASUVORK5CYII="},
+    "5": {"cap":"OneStream：アカウントの有効期間","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgMAAACQCAMAAACiaJihAAABgFBMVEVfpduhmaBXa5BkYm3j4NqWtdaiyOkpOFAxLjQ0SF/jya7OtaZxgJc7WIFTQz1JODoZgtOFdGW2wL+liW/+/v7o6u3o9/x4iKXW6vimqreIk6j89erV1tiZpbaIiJb359i1usXo1cnp7fF4hJuYt9b07OVoeJd3d4rIx8motsWVmqnX3OPGzNaZlpp1epS3tLd5lLfK5PaGmbW2qKbIuraopabG2Ofn3NXYxLrL0dnZ4elqc4qDi6TWysa3xtenlpnb9P6ox+VmbIapsbxZaYiJp8i50+iUi5VrhaiVq8WkvNSpw9q6wcqDe4klKzeIhIybscjItKulm6Tb0sm21/Lz3MuzzeWLobkcJDSzrbTr4dhbc5fizcIrMkDUvbZne6MAdM7C3vMpMT0BAQH/8Np3jLKVnbLCq6ZlZWVnZXsAa8tlrOKBfpNGRkZ8ka3Mwb3iy7x5nMDEvMBrirCDncCcoa12teVMZIgVFRVZWFdlapGKrdGznZyNwemTho05lNmF+XecAAARQklEQVR42u2dh5PbyLGHNylcsJ/93gAgIgGSSAxgzmmXpJabo7RR+U6rU7CkU7TOCv+6ewZgUPCrK8vy8lbdUmEJEASr2B96AubXPUXQvnWbwp8AGfjq38B99HK0z/+/n9tN61X0z2Qw0Dw3tlNe/vxJpv6vHBr2Ru/0L8NG26Mvr8eIsU8KDamxQswXqhgvlU9E2A5O3X69sbFxYbaFHjoFBuSdhsQsnguxA3fvjL375Mbg1eHKB56uh8aAOIQPU2/KonSi9aQ4WC5kSPF7QnyLpCgITduCd1qpfT0lEMNqVfvntpeq1fVYcInpjYPbBwe3Ny7E0EWnEAccV9fXdF1/9wrcmkjU2ndqiQQN4OG4JNkzQIcagb3KvUvjDFgjBh7X9zct0aZvO3q6466B6Tp/JKo6/He8ZadEyv1HraJV2skSQyJGPafasYqlvugELv/+4sbtC/vTF69tXFhEH51OW+CESNiGmF22La/T87z6DLi40lNFV4eAPZOl5xzNZljrUPooDlQ6JfLmHDFt5s/KjRoHRl9eyZFwTonXH6Vu8KQiuKlfSVtQH2aIEa3V2ue2M7Va32dAnj24tvEdP/c/G9cOZtBHp8KAbC+U64MoTP3CbvNK0CgYlt/Cm0m6XWfhIHzPWg4Fnz0Pbf4CNBv0tPKsRdsVG3AxH8LB9iUynZUfzpNCTslnSHs5uQMM1KG5KJVhE8QB6vzbF6J/3bgGKMyjk06Fgc29wgAB2YO7PhylDNzwff8mM3bqtH8wXFe1jkB7cJUl2g8M+R88snvLNAwUAJ9KrkbyblLW5sMNnhSiYh8Y8NsCgXDQ+Ogh0o4FTcHt2xtL3A8XgYELWXTS6cSB82O9QHDylShsOL+TLnfGmuj8TCjoD8wTrkjf2f6VkB+esYtkTXt1uxcFq1NsTE2NZklY4CkD16Vq/jl590jUMhSD64Kub8bGGIAAEPqeMRBCJ50GA0+s0XhunQ4NrwqjA+1nowFAfyb7cZ+QxgHWvf8eLgJ3/qUIWCHnN/PQuFcyZE6AcQH0B45b/VXaIgADBcF1RwyE/0z7A/NX/rxxbeNPPDrpNBhY/8co1h9TH2wPx4dy+3jgbTPfEUKfjAtMe6tIQ4dps4vkh/0B6Bx40efUzcYd0hQlUXLTgNZV6dM4QP4PhoVLPPdXGCBeQh+dAgPl9SV+6PHeLWJ2dTvwDZeuL/nONkWtY7U+Nz+w2wEeyocdv9dA4wCMAqbpQMJekEUHGo0n8FblOcnvXXlEWH+AxoG1tc1zQwbCswe3L3z33YXbF19hGDgFBuRUbvi7h6VbdF5A2w+OFK3BzJAcV0vj8wPRD5ptuS8EfExDNDDT0P0DNmI0OiwciUCUYWXpdWPkKfQHrgowVIQ+YVrtrAYXMGYPDg42Dg562Bv44z8vaAIp5o4aCiYSzBYJv3D5YFZhDsYH8JYZ8GJI7pA+OT87O1t30UH43BANGUBDBtCQATRkAA0ZQEMG0JABNGQADRlAQwbQkAE0ZADtdBhwisWiM7ZfWB2+lKtcoDgR54mSrNZgk0xWI/g7ni0GikWFU4rF4X743iXq6GQ1SVeEO94cR8KurGV/npHWnxU6oB+p41qfs8VA2vd+Oh3sm+szXVvVhJ3OcoS0La0nRBeNZ0QL/SyQu7Hrl9haIfwdzxIDXCp4kQq0oXktR3b4ynmzASGhMR+mq0uNDGWgwcXnQRwUf2H/A3/Hs8SAMrj/086gdxB1va1U7tBya0eepHUkaXnXZ8BpkOs5PhJpYxw4Uww4HzNQSFmqndOEeH1/D+SHjldK1Pw4IPA7CxVL1EWMA2e8LQCNIGsLwg26OjCe6uyfZAcMXMk9jXY7ro4K8bPVJyymgyZgAEVBqD5sFS8VrEWetHNpy+3HjCWfASOTXiY7i9gnPGtjw1SRAx1Batg4qCL9J6oqLCbfufUz9AG25JJM+wNr3krhObnaW0YNwFmbI0oXU8X0aPfxotwi5T02VbSzCFrBu3DbUwaoyAjGhtz6Av6MZ3uuOGxnZW/+isUb9RIRS+HG/3p7xCx7MEfEk6N+T8o4NiYLOdsM5GNEng4RMUS2l1kPkQb+fA/ySVAFuaonQD0ioRoInxmhIQNoyAAaMoCGDKAhA2jIABoygIYMoCEDaMgAGjKAhgygnTUGFEf58EB59FywXIPNHNs34WXid34N5K0eLjRJ4pKTia9hAStIiinng9y1o1Uib+hagZ0t+rKyT64skYIVtXOQsjInxreONFXU/MUEhwvDoiauGwrbgjZIeRyu3xq7dFgaEMElFKWKfEwCAw5bTMqlBqEgHRU0lns8Gt0LPxQ6x9FH/F3qZ8OeEbzeVvFSogCpyL2VajGz6yWTKUhJ2lxz7IwjnlCHJtectZIB60+jUIhgJ9poaHWh0YhSIjhFUQq9VjLJsldqDSh2M1NCl5w+A8F64uH6YnDUeoyr1WoJJUKUbrJ5zkk/FLouL+cfJQo/1vIL5IrAy3ZO1J4bnipuwhWLgt2TVDHJShrBasRWE5acCBEdEppHuAg0DJHd3+ZJPgqVkxhfueC7mlFEYBI0JoP1xMVhn8DorFC9YYKlJeZJvPXUzqQhoBuW2n9GE5PbS3w42oIs9LteVWn/Sj+zszooZlc+UdVq/zxkKo7eIWL1qUurVbjKSVALZXcsK35BwJolE6kxgRzix3RVcRxy1su0Rk1BIDt7tExdJcdVBFhrBlsaB1RxUT4U1XV6xeuzOWmZK9C6VhzgU1ApXS1a3ORpV+zsd8Wgk1mIasdDBtqvVLGF/YEJjANhzRMSYE3ITF5WW2R7P0HL0/Wz5Go9ri0Rvy0AGaJ8CMvPF1kdk2ZnK7J7z5JojcqyKIrVQ1bejvpXAZDmR7UPQ2QzqIpiblpu0ukv4dLEyesPtGPlOq14qLEqFfmotwhezMJ/chXiwB3SXlI1aAuEeUOoQreQMkDDhaF1/JGB6ay1IrtCiM8vsTIWvLy5r3d9ZRKsViZBScOy7QtV2hn0yakzoLARwWhcQAvZ0PJ0Zb9CQftPWVqDCm5mKFMZT/W24qu0LaAM2FL8R8YA/YxVYrUsIdz/1qifJ/0F2aY3/PUZKJiVE8WgDELbmp7x40BlhTQlEKsYN9Anpz8/oLD5gbFZIqMzigNhL27xoC0zG/OcE1970YI73G8LIA4kgzhAWHG7Q7/UUTpGoEaa+dCvldd+tQAytbEv688MegAVIQkfz2McmMR5Qqg4RAd5NA6UQU7iOB6rTkarU21fgpE/K1UGDMDAUJsiPzAn9jMJGEzSyxRyiRR8yGaKtCc3FO3EG80RcXlrWCStslQ7sqMWlrKbxOcF0PmHLiI0+gwBQt7F5Di03rQcjSyCf9NQsSr84/zcSVVRHM0vU2mmLKiOSsd9279JkqhFF7mUtQKVbIgZr0dpmausX/KmNvqeAp0pwC7hRDJgJljlYuot5jHYdWAMZ7IdeAyg6JCTKihTL3+iQ+fAq2Y1eNTgP14oV8FwEIjPDdGQATRkAA0ZQEMG0JABNGQADRlAQwbQkAE0ZAANGUCbbAbwec43zkDo5RTYB89wldGeQh/9KbXgeaJc+l0SIyogSXDDZauI2IQzkH1/nuf58+/HxEDymM6I1Spo02yVULuA6oy2614d1g/YggdprUFBYu2x8/JDnVGa6Yykoc6o3Lk89nXh4dpyEBklHVxXPAEM8O+z/IP3DyK33gfemAYtma8z8hbCXrRjgUQo0Bn1ovbscpGtLTeifDtGExmTPrznuLqd0V+whcQOyAmozohKE0iKUuJFNaYz4miZpHwPBActtupEiquoM5oEBt6+5P9y/+b9v5CXb4P7uMZtxiJgVDXKpUuKq4i2oKo82c7VKksRuOHBw4YkT/Pbwpq+ZoO65FCyj1VRp/6U07C2vPWY6ow4kayvDNYoUp2RIEkn8Z4gacvB0esCriSbAAamsufu37x58/657IPBIaPHtEFUOXYFbubUqvMwp9cvE6N+ooHO6Bh0RsSQnBy5m0nCYkOmMGqzrUyTGcdVNQlLTOV1L0MOqxQJkKxURT/McM0xnVE+gy3BRDAQesAYeBCaGta2O3a73W4RdEbm+md1Rk0aB7hG6G6uxilML7A9m5te5g6pZsCEqnhPIWpAJcQIaxrS9WVdDzqZ08JIZyS/e6WqLlJw+gw8uHyZMXD5cvBO2YsKdP2fA+uKj0QdqhdwQ52R5OuMaFsgkOvnti2tLjWgBaj0Volxz1JLQ52RBDqjR0yG/IHOyJonm0HnMbxutRJKysJFpafOALj+wc37N6fI1OWRzoh6cDrQGVm3qBepzugJiwNMZ0RlJ0YuH5MbfGEF3t8jTa3urxrndH0tRFeg5+/QdoXqjIYaE6ozCoofGL7+gEyjvuD0x4ZTD0h2IUv/kA90RsbHOqOKbYFyfHl6EU6AtgAqWWzHSN7zV4dXrNpQZyTVz5FUzPQoEz8ckzGtGYiWtUBn1GyRx5qKOqPJmCN6OfX28tupl6MDRl0a6owMT7RC00xnZCrxpNgq+zojQ6oloewpCXf8nj1E+PS4zkhe77Fbv9+LEW1MYX7UvzHSGSUgVLzBODAJc8XZ8y/fZj+vMzJASDrneMztpAA6o+e7IECZY/0BiBGCqBZ94XBbSCZg+A/+LUwnQYdSsHv7IaYl0qT6aI5I2bGGEwKVGyXF9rA/MJHPjJrgX3nHYzojOuR7d97UoMy1ASiQNPg3D/OErMGPSm6JvGGDPXmHTirdoQxYcVWMClATrR4zQXcqFz1ISNMQfJ1RZszlj6NRYRlLqE8kAzJ9OuCP7CJBchGlOtgxoedPb/dEsM/eHjfIPcPmCZjiKNC103wG+NPjs2M0ZAANGUBDBtCQATRkAA0ZQEMG0JABtAlmgOfQzqz9Pgb+xXloZ8K438cA/lDfGgRTiMA3ZRFkAC2CDCADyAAygAwgA8gAMoAMIAPIADKADCADyAAygAx8S6a8VjiFe138IgbkyNgx7oMTxlIUBVc1S59ByIx8nixE7b+AwN9/+jvYTz8Vv4ABx+268IcmFCLlrqvOgU+7bpd5X5+HpCRbvH8Skww2F8luV6cVTBVxL7iC7nZBZuh0dTdApql2QZEOV3FRU/a1rfhTYL/8+wzIkHlEXCSPofLgFr3vd5fZPkc9HgbRmdkEnbAMIqM0SzoCeSXgpCacxKWDlDMmXKG4SBSeyk6ZFVZ5+Ib0Ir0k2te11GuH2ewvX9YfeLxKRChfRvOIEFPljwaea7JcQ6qvGW5Sl5s6e20sDw6QgdfpthLzP5Nmn6OJaEQMBF/ZNmcDFr6QgcNbsghScZEqRI0tsrvldAc3PQSDgIE0TSGwSzfmmhr6iAHxFs1DQVsNGi7SW7RZgMuZKqaf+toM/PIfYQDu6hEDYok092ucCMljTJeMGCizP4wKThdLHzJAGxBypLtBHcM5aBa24BOurmIc+EMwEKaOgqAt08BNG/ndFRYOyO7eiAGT9hWJ7AZdAHpsxMBR4Oqyyo8uSmsjMrTQ/isMvP4CBkx2U6f3mNscN/BfE5r2NeZZ1h+Q2Umk3PKvL1OnDxkwWQCJjJoNPugxMJLQvi4Df1OYfUmf0IzndBjahdU1GA0UBEhQFyLOlgNOlln/z+lCzgm5mGMjSCdL81G6jrgKvcPivj/0M+P7bneVE11HhcCRh9LX4toajA2b7ho2BV9/fuBvvl1Mf0EcSEDVasgVwVVrLG+EotAsg9VIcNOzQ6HgJFnn/ZzDLKU1pJjgh1eoEVmhVyAcbEz2eZlt0cgfeK5Y/6RPX27hr/ttMfDpSSbe1/jMCA0ZQEMG0JABNGQADRlAQwbQkAG0s6M7RgjIN59/gEQQgm8+DwnmI8J8RGgE85KhIQNoyAAaMoCGDKB9a/ZPjv9H/UfFHpYAAAAASUVORK5CYII="},
+    "6": {"cap":"OneStream：参加グループ","img":"data:image/png;base64,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"},
+    "7": {"cap":"OneStream：入力項目","img":"data:image/png;base64,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"},
+    "8": {"cap":"OneStream：アカウント作成を承認制にする","img":"data:image/png;base64,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"},
+    "9": {"cap":"OneStream：備考","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAAxCAMAAAAx3CdVAAABgFBMVEX+/v7u8fIkKjeZpLa2u8emqbccJDPo7vLEw8jo5+m8xtOqtsXGzNWqsbvY1tu4wc20tL02NDrz6OOZnKvW3ebh3Nd5g5WLlajJ2OfWzcnTxLZHWW1TS07Eu7vc4+1pbXSjr8BgdY2Zq8ElNEiHhoeAh5pTa4KKnbUhLkKTgHOUjpiQnraAc25/kqh1hqKfoKt5f5R3f4p5aGV6aV5sfJaom4+pvtJsX1lac4uzpJhVaHvP1d/Uz9bW4/IpMD2RfXAfIy8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABNdgoFAAABXElEQVR42u3b107DMBhAYcd2EseZbbqgk2723qO8/1NB03KJhCyQAJ3vKrKUm19HdqIoQgAAgK9qNppJZAfvV1HiiSjcrPanw/OY4cCdH5cn/tU4FIk/y4vRJqzrWiCD5THTgaudw6hQRtkwy4t23Bo31ou7taCb3L4u2bPg6mBhRkZrGz3Z4qztp3a9uJKym/Zegj3mA0f9WKtU+f5z3cxUojvV4qWUd82elA8eA4Kbus7LdViJOW3FOq9OQrEv5VxcSHYsuIeVal+1S9URmX5sGOVtn7Hm5khObpgPXMMqlbFap9UZGBXbx/X7WhAEkwXjgbNsEHlhllU7VZKHHy+L02HLMhwAAAAAAODC47MNPq/D+c6Q4QH4K3sW5yAIC4QFwgIIC4QFwgIIC4QFwgIIC4QFwgIIC4QFwgIIC4QFwgIIC7/4Px1AfP9vXASJn+mDskAdAAAAwD/zBiVQDvSkoUT7AAAAAElFTkSuQmCC"},
+    "10": {"cap":"OneStream：発行ボタン","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAK8AAAA8CAMAAAAnvhqqAAABgFBMVEX+/v5bcN5Xbd7q6/To6OlugeKxueJleN+ap+eIl+d2iOSQnuVmeeDu8PXV2vaqte2zvPC7xPGhrevM0vTd4fjByfPHzOZdcuDZ2+rd4O0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVH8JmAAABW0lEQVR42u2Yy07EMAxFE7sttusmTV8z/P+PkoJAaNhMACkZ8FEXUVdHVmq71znDMAzDMAzDMAzDMP4Zifv7EV4r60YPRehQVXdV8EWAhpq+S6FuFo4VdZGKfT3V9B3N13x/6DtZfb/t+z4WPh2h5foK0UiRWfMkiySckYZ9YQyICafEF01IC2bizQhsynfBKUhyW5AZE8uJtlxfnlwUQjeoLCHQeR+43fqCBMwv84Pc75jy5cgrUd+urxInjLgz9bNDVmFMfbv3Ifuu6ILDNWr+8hhAcL5taG31s1zWOesOCnT66jb7hn0vsjtSDPMmQBODRNe0r1+2Rf2MuCvwKrm9BW55voH25z/aa9NV0fPkm57HH5vD2/Hr9vCA+5n5/l1ffjDf8v95WGrmJQOU5jv+qOn7zGXxGfixqxqgXfmpCLpWDii7Yyjg6CrrOuyKwAYia7wbi/eN3+YFwyAWTdrrLWoAAAAASUVORK5CYII="}
+  };
+  Object.keys(MANUAL_IMAGES).forEach(function(k){
+    var s = DEFAULT_SETTINGS.instrSteps[k];
+    if(s){ s.image = MANUAL_IMAGES[k].img; s.imageCaption = MANUAL_IMAGES[k].cap; }
+  });
+
+  function cloneDefaults(){return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));}
+
+  function loadJSON(key, fallback){
+    try{
+      const v = JSON.parse(localStorage.getItem(key));
+      return v === null || v === undefined ? fallback : v;
+    }catch(e){return fallback;}
+  }
+  function saveJSON(key, v){localStorage.setItem(key, JSON.stringify(v));}
+
+  /* ===== スプレッドシート同期 ===== */
+  function setSyncStatus(state){
+    const el = document.getElementById('syncStatus');
+    if(!el) return;
+    const t = new Date().toTimeString().slice(0,5);
+    const map = {
+      loading: ['スプレッドシートと同期中…', ''],
+      saving:  ['保存中…', ''],
+      ok:      ['● 同期済み ' + t, 'ok'],
+      offline: ['● オフライン（ローカルのみ）', 'err'],
+      error:   ['● 同期失敗（ローカルには保存済み）', 'err']
+    };
+    const m = map[state] || ['', ''];
+    el.textContent = m[0];
+    el.className = 'sync-status ' + m[1];
+  }
+  function gasConfigured_(){
+    return GAS_URL && GAS_URL.indexOf('http') === 0;
+  }
+  function revealTool_(){
+    const g = document.getElementById('authGate');
+    if(g) g.style.display = 'none';
+  }
+  function showGateDenied_(){
+    const g = document.getElementById('authGate');
+    if(!g) return;
+    g.style.display = 'flex';
+    g.innerHTML = '<div class="box">'
+      + '<h2>アクセスできません</h2>'
+      + '<p>このツールは株式会社ソフィアリンクスのGoogleアカウントで'
+      + 'ログインした状態でのみ利用できます。<br>'
+      + 'Googleにログインのうえ、再読み込みしてください。<br>'
+      + '（接続エラーの場合も再読み込みでお試しください）</p>'
+      + '<button onclick="location.reload()">再読み込み</button>'
+      + '</div>';
+  }
+  function pullAll(){
+    if(!gasConfigured_()){ revealTool_(); setSyncStatus('offline'); return; }
+    setSyncStatus('loading');
+    const cbName = 'gasCb_' + Date.now() + Math.floor(Math.random()*1000);
+    const sc = document.createElement('script');
+    let done = false;
+    function cleanup(){ try{ delete window[cbName]; }catch(e){} if(sc.parentNode) sc.parentNode.removeChild(sc); }
+    function fail(){
+      if(location.protocol === 'file:'){ revealTool_(); setSyncStatus('offline'); }
+      else { showGateDenied_(); }
+    }
+    window[cbName] = function(d){
+      done = true; cleanup();
+      if(d && d.ok){
+        revealTool_();
+        saveJSON(STORAGE_KEY, Array.isArray(d.records) ? d.records : []);
+        saveJSON(MEMBERS_KEY, Array.isArray(d.members) ? d.members : []);
+        refreshAll();
+        setSyncStatus('ok');
+      } else {
+        fail();
+      }
+    };
+    sc.onerror = function(){ if(!done){ cleanup(); fail(); } };
+    sc.src = GAS_URL + '?token=' + encodeURIComponent(GAS_TOKEN) + '&callback=' + cbName;
+    document.body.appendChild(sc);
+    setTimeout(function(){ if(!done){ cleanup(); fail(); } }, 15000);
+  }
+  function pushTo_(payload){
+    if(!gasConfigured_()){ setSyncStatus('offline'); return; }
+    setSyncStatus('saving');
+    fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      credentials: 'include',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify(Object.assign({token: GAS_TOKEN}, payload))
+    })
+      .then(function(){ setSyncStatus('ok'); })
+      .catch(function(){ setSyncStatus('error'); });
+  }
+  function pushRecords(){ pushTo_({records: loadRecords()}); }
+  function pushMembers(){ pushTo_({members: loadMembers()}); }
+  function commitRecords(arr){ saveJSON(STORAGE_KEY, arr); pushRecords(); }
+  function commitMembers(arr){ saveJSON(MEMBERS_KEY, arr); pushMembers(); }
+
+  function loadSettings(){
+    const s = loadJSON(SETTINGS_KEY, null);
+    const base = cloneDefaults();
+    if(!s) return base;
+    return {...base, ...s};
+  }
+  function loadRecords(){return loadJSON(STORAGE_KEY, []);}
+  function loadMembers(){return loadJSON(MEMBERS_KEY, []);}
+
+  let SETTINGS = loadSettings();
+  let BUILT_URL = '';
+  let URL_STALE = false;
+  let editSteps = [];
+  let INSTR_STICKY_TOP = 140;
+  let INSTR_TITLE_TOP = 180;
+
+  function uid(){return Date.now().toString(36) + Math.random().toString(36).slice(2,7);}
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function todayStr(){
+    const d = new Date();
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  }
+  function nowJST(){
+    const j = new Date(Date.now() + 9*3600*1000);
+    const p = n => String(n).padStart(2,'0');
+    return j.getUTCFullYear() + '-' + p(j.getUTCMonth()+1) + '-' + p(j.getUTCDate())
+      + ' ' + p(j.getUTCHours()) + ':' + p(j.getUTCMinutes()) + ':' + p(j.getUTCSeconds());
+  }
+
+  function getFormData(){
+    return {
+      id: document.getElementById('editId').value,
+      name: document.getElementById('name').value.trim(),
+      company: document.getElementById('company').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      available_invites: document.getElementById('availableInvites').value.trim(),
+      invite_expiry: SETTINGS.defaultInviteExpiry || '',
+      account_expiry: SETTINGS.defaultAccountExpiry || '',
+      invite_url: document.getElementById('inviteUrl').value.trim(),
+      memo: document.getElementById('memo').value.trim()
+    };
+  }
+
+  function fillPlaceholders(template, data){
+    return String(template||'').replace(/\{\{(\w+)\}\}/g, (_, key) => {
+      const v = data[key];
+      return v !== undefined && v !== '' ? v : '';
+    });
+  }
+
+  function buildVariableParams(data){
+    return (SETTINGS.variableQueryParams || [])
+      .filter(p => p.key)
+      .map(p => ({key: p.key, value: fillPlaceholders(p.value || '', data)}))
+      .filter(p => p.value);
+  }
+  function variableParamsToString(params){
+    return params.map(p => encodeURIComponent(p.key) + '=' + encodeURIComponent(p.value)).join('&');
+  }
+  function encodeFixedQuery(fixed){
+    if(!fixed) return '';
+    return fixed.trim().replace(/^\?/, '').split('&').filter(Boolean).map(pair => {
+      const idx = pair.indexOf('=');
+      if(idx < 0) return encodeURIComponent(pair);
+      const k = pair.slice(0, idx);
+      const v = pair.slice(idx + 1);
+      return encodeURIComponent(k) + '=' + encodeURIComponent(v);
+    }).join('&');
+  }
+  function buildFinalUrl(baseUrl, fixedPart, variableParams){
+    if(!baseUrl) return '';
+    let parts = [];
+    const encodedFixed = encodeFixedQuery(fixedPart);
+    if(encodedFixed) parts.push(encodedFixed);
+    const varStr = variableParamsToString(variableParams);
+    if(varStr) parts.push(varStr);
+    if(parts.length === 0) return baseUrl;
+    const sep = baseUrl.includes('?') ? '&' : '?';
+    return baseUrl + sep + parts.join('&');
+  }
+
+  function updateUrlStatus(){
+    const el = document.getElementById('finalUrlBadge');
+    if(!el) return;
+    if(!BUILT_URL){
+      el.textContent = '未生成';
+      el.className = 'url-badge';
+    } else if(URL_STALE){
+      el.textContent = '要再生成';
+      el.className = 'url-badge warn';
+    } else {
+      el.textContent = '生成済み';
+      el.className = 'url-badge ok';
+    }
+  }
+
+  function updateGoInstrBtn(){
+    const d = getFormData();
+    document.getElementById('goInstrBtn').disabled = !(d.name && d.email && d.available_invites);
+  }
+
+  function onFormInput(){
+    if(BUILT_URL){
+      URL_STALE = true;
+      document.getElementById('staleWarning').classList.add('show');
+      document.getElementById('finalUrlBox').classList.add('stale');
+    }
+    updateUrlStatus();
+    updateGoInstrBtn();
+    refreshUrlSection();
+    renderInstrCards();
+    updateMailPreview();
+  }
+
+  function refreshUrlSection(){
+    const raw = getFormData();
+    const params = buildVariableParams(raw);
+    const varStr = variableParamsToString(params);
+    const fp = document.getElementById('fixedPartDisplay');
+    const vp = document.getElementById('variablePartDisplay');
+    if(SETTINGS.fixedQuery){
+      fp.classList.remove('muted');
+      fp.textContent = SETTINGS.fixedQuery;
+    } else {
+      fp.classList.add('muted');
+      fp.textContent = '（未設定）';
+    }
+    if(varStr){
+      vp.classList.remove('muted');
+      vp.textContent = '&' + varStr;
+    } else {
+      vp.classList.add('muted');
+      vp.textContent = '（変動部分の生成データなし。氏名/会社/メールを入力してください）';
+    }
+  }
+
+  function buildUrl(){
+    const raw = getFormData();
+    if(!raw.invite_url){toast('招待ベースURLを入力してください', true); return;}
+    if(!raw.name){toast('メイン会員氏名を入力してください', true); return;}
+    if(!raw.email){toast('メイン会員メールを入力してください', true); return;}
+    const params = buildVariableParams(raw);
+    const url = buildFinalUrl(raw.invite_url, SETTINGS.fixedQuery, params);
+    BUILT_URL = url;
+    URL_STALE = false;
+    const box = document.getElementById('finalUrlBox');
+    box.textContent = url;
+    box.classList.remove('empty','stale');
+    document.getElementById('staleWarning').classList.remove('show');
+    updateUrlStatus();
+    updateMailPreview();
+    toast('完成URLを生成しました');
+  }
+  function copyFinalUrl(){
+    if(!BUILT_URL){toast('まず「URL作成」を実行してください', true); return;}
+    navigator.clipboard.writeText(BUILT_URL).then(()=>toast('完成URLをコピーしました'));
+  }
+
+  function buildPreviewData(){
+    const raw = getFormData();
+    return {
+      ...raw,
+      fixed_query: SETTINGS.fixedQuery || '（なし）',
+      final_url: BUILT_URL || '（「URL作成」ボタンを押してください）',
+      staff: SETTINGS.staffName || '',
+      today: todayStr()
+    };
+  }
+
+  /* ===== 指示書 縦スクロールリスト ===== */
+  function renderInstrCards(){
+    const data = buildPreviewData();
+    const steps = SETTINGS.instrSteps || [];
+    const list = document.getElementById('instrList');
+    if(steps.length === 0){
+      list.innerHTML = '<div class="instr-empty">指示書ステップが未設定です。<br>「設定」画面で追加してください。</div>';
+      document.getElementById('instrProgressBar').innerHTML = '';
+      return;
+    }
+    list.innerHTML = steps.map((s,i) => {
+      const title = escapeHtml(fillPlaceholders(s.title, data));
+      const body = escapeHtml(fillPlaceholders(s.body, data));
+      const img = s.image
+        ? `<div class="instr-card-img"><img src="${s.image}" alt="">${s.imageCaption?`<div class="instr-card-cap">${escapeHtml(s.imageCaption)}</div>`:''}</div>`
+        : '<div class="instr-card-noimg">（画像未設定。設定画面でこのステップに画像を添付できます）</div>';
+      const copyBtn = (s.copyValue && s.copyValue.trim())
+        ? `<button class="instr-card-copy" onclick="copyStep(${i})">値をコピー</button>`
+        : '';
+      return `<div class="instr-card"><div class="instr-card-inner">
+        <div class="instr-card-title">
+          <span class="instr-card-num">${i+1}</span>
+          <span class="ttl">${title}</span>
+          ${copyBtn}
+        </div>
+        <div class="instr-card-body">${body}</div>
+        ${img}
+      </div></div>`;
+    }).join('');
+    renderProgressBar();
+  }
+  function renderProgressBar(){
+    const bar = document.getElementById('instrProgressBar');
+    if(!bar) return;
+    const cards = Array.from(document.querySelectorAll('#instrList .instr-card'));
+    if(cards.length === 0){ bar.innerHTML = ''; return; }
+    bar.innerHTML = cards.map((c,i) => {
+      const next = cards[i+1];
+      const hh = next ? (next.offsetTop - c.offsetTop) : c.offsetHeight;
+      return `<div class="instr-seg" id="instrSeg${i}" style="height:${hh}px"></div>`;
+    }).join('');
+    updateInstrProgress();
+  }
+  function updateInstrProgress(){
+    const pane = document.getElementById('pane-instr');
+    const list = document.getElementById('instrList');
+    if(!pane || !list || !pane.classList.contains('active')) return;
+    const titles = Array.from(list.querySelectorAll('.instr-card-title'));
+    if(titles.length === 0) return;
+    let current = 0;
+    titles.forEach(t => { if(t.getBoundingClientRect().top <= INSTR_TITLE_TOP + 2) current++; });
+    const atBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 2);
+    if(atBottom) current = titles.length;
+    current = Math.max(1, Math.min(current, titles.length));
+    titles.forEach((_,i) => {
+      const seg = document.getElementById('instrSeg'+i);
+      if(!seg) return;
+      seg.classList.toggle('done', i < current-1);
+      seg.classList.toggle('current', i === current-1);
+    });
+    const total = titles.length;
+    const pct = total > 1 ? Math.round((current-1)/(total-1)*100) : 100;
+    const cEl = document.getElementById('instrCounter');
+    if(cEl) cEl.textContent = current + '／' + total;
+    const pEl = document.getElementById('instrPct');
+    if(pEl) pEl.textContent = '（' + pct + '％）';
+  }
+  function copyStep(i){
+    const data = buildPreviewData();
+    const s = (SETTINGS.instrSteps||[])[i];
+    if(!s || !s.copyValue) return;
+    const text = fillPlaceholders(s.copyValue, data);
+    if(!text){toast('コピーする値がありません', true); return;}
+    navigator.clipboard.writeText(text).then(function(){
+      toast(text.indexOf('\n') >= 0 ? 'コピーしました' : '「'+text+'」をコピーしました');
+    });
+  }
+  function copyAllInstr(){
+    const data = buildPreviewData();
+    const steps = SETTINGS.instrSteps || [];
+    if(!steps.length){toast('ステップがありません', true); return;}
+    const text = '■ OneStream 招待作成指示書（' + todayStr() + '）\n\n' +
+      steps.map(s => fillPlaceholders(s.title,data) + '\n' + fillPlaceholders(s.body,data)).join('\n\n──────────────\n\n');
+    navigator.clipboard.writeText(text).then(()=>toast('指示書を全文コピーしました（画像は含まれません）'));
+  }
+
+  function updateMailPreview(){
+    const data = buildPreviewData();
+    document.getElementById('previewSubject').textContent =
+      fillPlaceholders(SETTINGS.tplSubject, data) || '（件名テンプレ未設定）';
+    document.getElementById('previewBody').textContent =
+      fillPlaceholders(SETTINGS.tplBody, data) || '（本文テンプレ未設定）';
+  }
+
+  /* ===== 画面・タブ切替 ===== */
+  function switchScreen(s){
+    document.getElementById('navWork').classList.toggle('active', s==='work');
+    document.getElementById('navHistory').classList.toggle('active', s==='history');
+    document.getElementById('screen-work').classList.toggle('active', s==='work');
+    document.getElementById('screen-history').classList.toggle('active', s==='history');
+    document.body.classList.toggle('bg-work', s==='work');
+    document.body.classList.toggle('bg-history', s==='history');
+    window.scrollTo(0,0);
+    if(s==='history') renderHistory();
+  }
+  function switchSubTab(t){
+    [['input','stInput','pane-input'],['instr','stInstr','pane-instr'],['url','stUrl','pane-url']]
+      .forEach(([key,btn,pane]) => {
+        document.getElementById(btn).classList.toggle('active', key===t);
+        document.getElementById(pane).classList.toggle('active', key===t);
+      });
+    window.scrollTo(0,0);
+    if(t==='instr') requestAnimationFrame(setStickyOffset);
+  }
+
+  /* ===== フォーム ===== */
+  function clearForm(){
+    document.getElementById('editId').value = '';
+    document.getElementById('editingLabel').textContent = '新規';
+    ['name','company','email','availableInvites','inviteUrl','memo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('availableInvites').value = SETTINGS.defaultAvailableInvites || '';
+    BUILT_URL = '';
+    URL_STALE = false;
+    const box = document.getElementById('finalUrlBox');
+    box.classList.add('empty');
+    box.classList.remove('stale');
+    box.textContent = '（「URL作成」ボタンを押すと表示されます）';
+    document.getElementById('staleWarning').classList.remove('show');
+    updateUrlStatus();
+    refreshUrlSection();
+    renderInstrCards();
+    updateMailPreview();
+    updateGoInstrBtn();
+    switchSubTab('input');
+  }
+
+  function loadRecord(id){
+    const r = loadRecords().find(x => x.id === id);
+    if(!r) return;
+    document.getElementById('editId').value = r.id;
+    document.getElementById('editingLabel').textContent = `編集：${r.name||''}`;
+    document.getElementById('name').value = r.name || '';
+    document.getElementById('company').value = r.company || '';
+    document.getElementById('email').value = r.email || '';
+    document.getElementById('availableInvites').value = r.available_invites || '';
+    document.getElementById('inviteUrl').value = r.invite_url || '';
+    document.getElementById('memo').value = r.memo || '';
+    BUILT_URL = r.final_url || '';
+    URL_STALE = false;
+    const box = document.getElementById('finalUrlBox');
+    if(BUILT_URL){
+      box.classList.remove('empty','stale');
+      box.textContent = BUILT_URL;
+    } else {
+      box.classList.add('empty');
+      box.textContent = '（「URL作成」ボタンを押すと表示されます）';
+    }
+    document.getElementById('staleWarning').classList.remove('show');
+    updateUrlStatus();
+    refreshUrlSection();
+    renderInstrCards();
+    updateMailPreview();
+    updateGoInstrBtn();
+    switchScreen('work');
+    switchSubTab('input');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function validateRequired(d){
+    if(!d.name){toast('氏名は必須です', true); return false;}
+    if(!d.email){toast('メールは必須です', true); return false;}
+    if(!d.available_invites){toast('登録可能人数は必須です', true); return false;}
+    return true;
+  }
+  function saveRecord(status){
+    const d = getFormData();
+    if(!validateRequired(d)) return;
+    if(status === 'sent' && !BUILT_URL){
+      if(!confirm('完成URLが未生成です。このまま「送信済」として保存しますか？')) return;
+    }
+    if(URL_STALE){
+      if(!confirm('入力変更後、URLが再生成されていません。古いURLのまま保存しますか？')) return;
+    }
+    const records = loadRecords();
+    const final_url = BUILT_URL;
+    let rec;
+    if(d.id){
+      rec = records.find(r => r.id === d.id);
+      if(rec) Object.assign(rec, d, { status, final_url, updated_at: nowJST() });
+    }
+    if(!rec){
+      rec = {...d, final_url, id: uid(), status, created_at: nowJST(), updated_at: nowJST()};
+      records.unshift(rec);
+    }
+    commitRecords(records);
+    document.getElementById('editId').value = rec.id;
+    document.getElementById('editingLabel').textContent = `編集：${rec.name||''}`;
+    renderHistory();
+    toast('保存しました（' + STATUS_LABEL[status] + '）');
+  }
+  function deleteRecord(id){
+    if(!confirm('この履歴を削除します。よろしいですか？')) return;
+    commitRecords(loadRecords().filter(r => r.id !== id));
+    if(document.getElementById('editId').value === id) clearForm();
+    renderHistory();
+    toast('削除しました');
+  }
+  function changeStatus(id, status){
+    const records = loadRecords();
+    const r = records.find(x => x.id === id);
+    if(!r) return;
+    r.status = status;
+    r.updated_at = nowJST();
+    commitRecords(records);
+    renderHistory();
+  }
+  function clearAll(){
+    commitRecords([]);
+    clearForm();
+    renderHistory();
+    toast('全履歴を削除しました');
+  }
+
+  const STATUS_LABEL = {
+    draft:'下書き', ready:'発行準備済', sent:'送信済み', registered:'登録完了', expired:'失効'
+  };
+
+  function renderHistory(){
+    renderMemberPicker();
+    const records = loadRecords();
+    const q = document.getElementById('searchBox').value.trim().toLowerCase();
+    const fs = document.getElementById('filterStatus').value;
+    const filtered = records.filter(r => {
+      if(fs && r.status !== fs) return false;
+      if(!q) return true;
+      return [r.name,r.company,r.email,r.invite_url,r.final_url,r.memo].some(v => (v||'').toLowerCase().includes(q));
+    });
+    const counts = {draft:0,ready:0,sent:0,registered:0,expired:0};
+    records.forEach(r => { if(counts[r.status] !== undefined) counts[r.status]++; });
+    document.getElementById('stats').innerHTML =
+      `<div class="stat">総数<strong>${records.length}</strong></div>` +
+      Object.keys(STATUS_LABEL).map(k => `<div class="stat">${STATUS_LABEL[k]}<strong>${counts[k]}</strong></div>`).join('');
+
+    const container = document.getElementById('historyContainer');
+    if(filtered.length === 0){
+      container.innerHTML = '<div class="empty">' + (records.length===0 ? '履歴はまだありません。' : '該当する履歴がありません。') + '</div>';
+      return;
+    }
+    let html = `<table>
+      <thead><tr>
+        <th style="width:80px;">更新日</th>
+        <th style="width:110px;">氏名</th>
+        <th style="width:140px;">会社</th>
+        <th style="width:150px;">メール</th>
+        <th style="width:55px;">人数</th>
+        <th>完成URL</th>
+        <th style="width:100px;">ステータス</th>
+        <th style="width:160px;">操作</th>
+      </tr></thead><tbody>`;
+    filtered.forEach(r => {
+      const url = r.final_url || r.invite_url || '';
+      const shortUrl = url ? (url.length > 60 ? url.slice(0,60)+'…' : url) : '（未生成）';
+      const dt = (r.updated_at||'').slice(0,10);
+      html += `<tr>
+        <td>${dt}</td>
+        <td class="text-left">${escapeHtml(r.name)}</td>
+        <td class="text-left">${escapeHtml(r.company || '－')}</td>
+        <td class="text-left" style="font-size:10px;">${escapeHtml(r.email)}</td>
+        <td>${escapeHtml(r.available_invites || '－')}</td>
+        <td class="url-cell" title="${escapeHtml(url)}">${escapeHtml(shortUrl)}</td>
+        <td>
+          <select onchange="changeStatus('${r.id}', this.value)" style="font-size:10px;padding:2px 3px;border:1px solid var(--border);border-radius:3px;background:#fff;">
+            ${Object.keys(STATUS_LABEL).map(k => `<option value="${k}" ${r.status===k?'selected':''}>${STATUS_LABEL[k]}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <div class="row-actions">
+            <button onclick="loadRecord('${r.id}')">編集</button>
+            <button onclick="copyHistoryUrl('${r.id}')">URLコピー</button>
+            <button class="del" onclick="deleteRecord('${r.id}')">削除</button>
+          </div>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function copyText(elId, askSent){
+    const el = document.getElementById(elId);
+    navigator.clipboard.writeText(el.textContent).then(()=>{
+      toast('テキストをコピーしました');
+      if(askSent) confirmMarkSent();
+    });
+  }
+  function copyMail(){
+    const sub = document.getElementById('previewSubject').textContent;
+    const body = document.getElementById('previewBody').textContent;
+    navigator.clipboard.writeText(`件名：${sub}\n\n${body}`).then(()=>{
+      toast('件名＋本文をコピーしました');
+      confirmMarkSent();
+    });
+  }
+  function confirmMarkSent(){
+    if(confirm('案内メールをコピーしました。\nこの履歴を「送信済み」としてマークしますか？')){
+      saveRecord('sent');
+    }
+  }
+  function copyHistoryUrl(id){
+    const r = loadRecords().find(x => x.id === id);
+    if(!r) return;
+    const url = r.final_url || r.invite_url || '';
+    if(!url){toast('URLが未設定です', true); return;}
+    navigator.clipboard.writeText(url).then(()=>toast('URLをコピーしました'));
+  }
+
+  /* ===== バックアップ/復元/CSV ===== */
+  function exportSettings(){
+    const data = { exported_at: nowJST(), settings: SETTINGS };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CS招待_設定バックアップ_${nowJST().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('設定をバックアップしました');
+  }
+  function importSettings(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const d = JSON.parse(e.target.result);
+        if(!d || !d.settings){toast('設定データが含まれていません', true); return;}
+        if(!confirm('現在の設定をファイルの内容で上書きします。よろしいですか？\n（発行履歴・会員データには影響しません）')) return;
+        SETTINGS = {...cloneDefaults(), ...d.settings};
+        saveJSON(SETTINGS_KEY, SETTINGS);
+        refreshAll();
+        toast('設定を復元しました');
+      }catch(err){toast('復元失敗：' + err.message, true);}
+    };
+    reader.readAsText(file);
+    ev.target.value = '';
+  }
+  function exportCSV(){
+    const records = loadRecords();
+    if(records.length === 0){toast('履歴がありません', true); return;}
+    const headers = ['更新日','氏名','会社','メール','登録可能人数','招待URL終了','アカウント期限','招待ベースURL','完成URL','ステータス','備考'];
+    const rows = records.map(r => [
+      (r.updated_at||'').slice(0,10),
+      r.name, r.company, r.email,
+      r.available_invites, r.invite_expiry, r.account_expiry,
+      r.invite_url, r.final_url,
+      STATUS_LABEL[r.status]||r.status, r.memo
+    ]);
+    const csv = [headers, ...rows].map(row =>
+      row.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')
+    ).join('\r\n');
+    const blob = new Blob(['﻿' + csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CS招待履歴_${nowJST().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSVを書き出しました');
+  }
+
+  /* ===== 会員DB ===== */
+  function openMemberDB(){
+    document.getElementById('memberDBModal').classList.add('show');
+    renderMembers();
+  }
+  function closeMemberDB(){
+    document.getElementById('memberDBModal').classList.remove('show');
+  }
+  function addMember(){
+    const name = document.getElementById('newMemberName').value.trim();
+    const email = document.getElementById('newMemberEmail').value.trim();
+    if(!name || !email){toast('氏名とメールは必須です', true); return;}
+    const members = loadMembers();
+    members.unshift({
+      id: uid(),
+      name,
+      company: document.getElementById('newMemberCompany').value.trim(),
+      email
+    });
+    commitMembers(members);
+    document.getElementById('newMemberName').value = '';
+    document.getElementById('newMemberEmail').value = '';
+    document.getElementById('newMemberCompany').value = '';
+    renderMembers();
+    toast('追加しました');
+  }
+  function deleteMember(id){
+    if(!confirm('会員を削除しますか？')) return;
+    commitMembers(loadMembers().filter(m => m.id !== id));
+    renderMembers();
+  }
+  function selectMember(id){
+    const m = loadMembers().find(x => x.id === id);
+    if(!m) return;
+    document.getElementById('name').value = m.name || '';
+    document.getElementById('company').value = m.company || '';
+    document.getElementById('email').value = m.email || '';
+    onFormInput();
+    closeMemberDB();
+    switchScreen('work');
+    switchSubTab('input');
+    toast('フォームに反映しました');
+  }
+  /* 入力ペイン：会員DBから選択（検索付き候補リスト） */
+  function renderMemberPicker(){
+    const listEl = document.getElementById('memberPickList');
+    if(!listEl) return;
+    const q = (document.getElementById('memberPickSearch').value||'').trim().toLowerCase();
+    const filter = document.getElementById('memberPickFilter').value;
+    if(!q){
+      listEl.innerHTML = '<div class="member-pick-hint">氏名・会社・メールで検索すると候補が表示されます。</div>';
+      return;
+    }
+    const issued = new Set(loadRecords().map(r => (r.email||'').toLowerCase()).filter(Boolean));
+    let members = loadMembers().filter(m => [m.name,m.company,m.email].some(v => (v||'').toLowerCase().includes(q)));
+    if(filter === 'unissued'){
+      members = members.filter(m => !issued.has((m.email||'').toLowerCase()));
+    }
+    if(members.length === 0){
+      listEl.innerHTML = '<div class="member-pick-hint">該当する会員がいません。</div>';
+      return;
+    }
+    const shown = members.slice(0,50);
+    listEl.innerHTML = shown.map(m => {
+      const isIssued = issued.has((m.email||'').toLowerCase());
+      return `<div class="member-pick-row">
+        <div class="member-pick-info">
+          <div class="member-pick-name">${escapeHtml(m.name)}${isIssued?'<span class="member-pick-badge">発行済</span>':''}</div>
+          <div class="member-pick-sub">${escapeHtml(m.company||'－')}／${escapeHtml(m.email)}</div>
+        </div>
+        <button class="btn btn-sub btn-sm" onclick="pickMember('${m.id}')">選択</button>
+      </div>`;
+    }).join('') + (members.length>50 ? `<div class="member-pick-hint">他 ${members.length-50} 件。検索を絞り込んでください。</div>` : '');
+  }
+  function pickMember(id){
+    const m = loadMembers().find(x => x.id === id);
+    if(!m) return;
+    document.getElementById('name').value = m.name || '';
+    document.getElementById('company').value = m.company || '';
+    document.getElementById('email').value = m.email || '';
+    onFormInput();
+    toast('フォームに反映しました：' + (m.name||''));
+  }
+
+  function renderMembers(){
+    renderMemberPicker();
+    const members = loadMembers();
+    const q = (document.getElementById('memberSearch').value||'').toLowerCase();
+    const filtered = members.filter(m => !q || [m.name,m.company,m.email].some(v => (v||'').toLowerCase().includes(q)));
+    document.getElementById('memberCount').textContent = `（${filtered.length}/${members.length}件）`;
+    const container = document.getElementById('memberListContainer');
+    if(filtered.length === 0){
+      container.innerHTML = '<div class="empty">会員データがありません。</div>';
+      return;
+    }
+    let html = `<table>
+      <thead><tr><th style="width:120px;">氏名</th><th style="width:160px;">会社</th><th>メール</th><th style="width:140px;">操作</th></tr></thead>
+      <tbody>`;
+    filtered.forEach(m => {
+      html += `<tr>
+        <td class="text-left">${escapeHtml(m.name)}</td>
+        <td class="text-left">${escapeHtml(m.company||'')}</td>
+        <td class="text-left" style="font-size:11px;">${escapeHtml(m.email)}</td>
+        <td>
+          <div class="row-actions">
+            <button onclick="selectMember('${m.id}')">選択</button>
+            <button class="del" onclick="deleteMember('${m.id}')">削除</button>
+          </div>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+  function importMembersCSV(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        let txt = e.target.result;
+        if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
+        const lines = txt.split(/\r?\n/).filter(l => l.trim());
+        if(lines.length < 2) throw new Error('データ行がありません');
+        const headers = parseCSVLine(lines[0]).map(h => h.trim());
+        const idx = {
+          name: headers.findIndex(h => /氏名|名前|name/i.test(h)),
+          company: headers.findIndex(h => /会社|所属|company/i.test(h)),
+          email: headers.findIndex(h => /メール|mail|email/i.test(h))
+        };
+        if(idx.name < 0 || idx.email < 0) throw new Error('「氏名」「メール」のヘッダが必要です');
+        const existing = loadMembers();
+        let added = 0;
+        for(let i=1;i<lines.length;i++){
+          const cells = parseCSVLine(lines[i]);
+          const name = (cells[idx.name]||'').trim();
+          const email = (cells[idx.email]||'').trim();
+          if(!name || !email) continue;
+          if(existing.find(m => m.email === email)) continue;
+          existing.unshift({
+            id: uid(),
+            name,
+            company: idx.company >= 0 ? (cells[idx.company]||'').trim() : '',
+            email
+          });
+          added++;
+        }
+        commitMembers(existing);
+        renderMembers();
+        toast(`${added}件をインポートしました`);
+      }catch(err){toast('CSV取込失敗：' + err.message, true);}
+    };
+    reader.readAsText(file, 'UTF-8');
+    ev.target.value = '';
+  }
+  function parseCSVLine(line){
+    const result = [];
+    let cur = '';
+    let inQ = false;
+    for(let i=0;i<line.length;i++){
+      const c = line[i];
+      if(inQ){
+        if(c === '"' && line[i+1] === '"'){cur += '"'; i++;}
+        else if(c === '"'){inQ = false;}
+        else cur += c;
+      } else {
+        if(c === '"') inQ = true;
+        else if(c === ','){result.push(cur); cur = '';}
+        else cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+  function exportMembersCSV(){
+    const members = loadMembers();
+    if(!members.length){toast('会員データがありません', true); return;}
+    const rows = [['氏名','会社','メール'], ...members.map(m => [m.name,m.company,m.email])];
+    const csv = rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['﻿'+csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CS会員DB_${nowJST().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('会員CSVを書き出しました');
+  }
+
+  /* ===== 設定 ===== */
+  function openSettings(){
+    document.getElementById('setDefaultInviteExpiry').value = SETTINGS.defaultInviteExpiry || '';
+    document.getElementById('setDefaultAccountExpiry').value = SETTINGS.defaultAccountExpiry || '';
+    document.getElementById('setDefaultAvailableInvites').value = SETTINGS.defaultAvailableInvites || '';
+    document.getElementById('setStaffName').value = SETTINGS.staffName || '';
+    document.getElementById('setFixedQuery').value = SETTINGS.fixedQuery || '';
+    document.getElementById('setTplSubject').value = SETTINGS.tplSubject || '';
+    document.getElementById('setTplBody').value = SETTINGS.tplBody || '';
+    renderParamRows(SETTINGS.variableQueryParams || []);
+    editSteps = JSON.parse(JSON.stringify(SETTINGS.instrSteps || []));
+    renderStepEditor();
+    document.getElementById('settingsModal').classList.add('show');
+  }
+  function closeSettings(){
+    document.getElementById('settingsModal').classList.remove('show');
+  }
+
+  function renderParamRows(params){
+    const c = document.getElementById('setQueryParams');
+    c.innerHTML = '';
+    params.forEach(p => addParamRow(p.key, p.value));
+    if(params.length === 0) addParamRow();
+  }
+  function addParamRow(key, value){
+    const c = document.getElementById('setQueryParams');
+    const row = document.createElement('div');
+    row.className = 'params-row';
+    row.innerHTML = `
+      <input type="text" placeholder="key（例: ParentMail）" value="${escapeHtml(key||'')}">
+      <input type="text" placeholder="value（{{email}} 等）" value="${escapeHtml(value||'')}">
+      <button onclick="this.parentNode.remove()">×</button>`;
+    c.appendChild(row);
+  }
+  function collectParamRows(){
+    const rows = document.querySelectorAll('#setQueryParams .params-row');
+    const result = [];
+    rows.forEach(r => {
+      const inputs = r.querySelectorAll('input');
+      const k = inputs[0].value.trim();
+      const v = inputs[1].value.trim();
+      if(k) result.push({key:k, value:v});
+    });
+    return result;
+  }
+
+  /* ステップ編集 */
+  function renderStepEditor(){
+    const c = document.getElementById('setStepEditor');
+    if(editSteps.length === 0){
+      c.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px;">ステップがありません。「＋ステップを追加」で作成してください。</div>';
+      return;
+    }
+    c.innerHTML = editSteps.map((s,i) => `
+      <div class="step-row">
+        <div class="step-row-head">
+          <span class="step-row-num">${i+1}</span>
+          <div class="step-row-btns">
+            <button onclick="moveStep(${i},-1)" ${i===0?'disabled':''}>↑</button>
+            <button onclick="moveStep(${i},1)" ${i===editSteps.length-1?'disabled':''}>↓</button>
+            <button class="del" onclick="removeStep(${i})">削除</button>
+          </div>
+        </div>
+        <input type="text" placeholder="見出し（例: ① タイトル）" value="${escapeHtml(s.title||'')}" oninput="updateStepField(${i},'title',this.value)">
+        <textarea placeholder="本文（{{available_invites}} 等のプレースホルダ可）" oninput="updateStepField(${i},'body',this.value)">${escapeHtml(s.body||'')}</textarea>
+        <input type="text" placeholder="コピーボタンの値（空欄ならボタン非表示。{{invite_expiry}} 等可）" value="${escapeHtml(s.copyValue||'')}" oninput="updateStepField(${i},'copyValue',this.value)">
+        <div class="step-img-row">
+          <input type="file" accept="image/*" onchange="loadStepImage(${i},this)">
+          <button class="btn-ghost btn btn-sm" type="button" onclick="clearStepImage(${i})">画像削除</button>
+        </div>
+        <input type="text" placeholder="画像キャプション（任意）" value="${escapeHtml(s.imageCaption||'')}" oninput="updateStepField(${i},'imageCaption',this.value)">
+        <div class="step-img-preview" id="stepImgPreview${i}">${
+          s.image ? `<img src="${s.image}" alt="">` : '<div class="none">（画像未設定）</div>'
+        }</div>
+      </div>`).join('');
+  }
+  function updateStepField(i, field, value){
+    if(editSteps[i]) editSteps[i][field] = value;
+  }
+  function moveStep(i, dir){
+    const j = i + dir;
+    if(j < 0 || j >= editSteps.length) return;
+    [editSteps[i], editSteps[j]] = [editSteps[j], editSteps[i]];
+    renderStepEditor();
+  }
+  function removeStep(i){
+    if(!confirm('このステップを削除します。よろしいですか？')) return;
+    editSteps.splice(i,1);
+    renderStepEditor();
+  }
+  function addStep(){
+    editSteps.push({title:'', body:'', copyValue:'', image:'', imageCaption:''});
+    renderStepEditor();
+  }
+  function loadStepImage(i, input){
+    const file = input.files[0];
+    if(!file) return;
+    if(file.size > 5*1024*1024){toast('画像は5MB以下にしてください', true); input.value=''; return;}
+    const reader = new FileReader();
+    reader.onload = e => {
+      if(editSteps[i]){
+        editSteps[i].image = e.target.result;
+        const el = document.getElementById('stepImgPreview'+i);
+        if(el) el.innerHTML = `<img src="${editSteps[i].image}" alt="">`;
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+  function clearStepImage(i){
+    if(editSteps[i]){
+      editSteps[i].image = '';
+      const el = document.getElementById('stepImgPreview'+i);
+      if(el) el.innerHTML = '<div class="none">（画像未設定）</div>';
+    }
+  }
+
+  function saveSettings(){
+    const next = {
+      defaultInviteExpiry: document.getElementById('setDefaultInviteExpiry').value.trim(),
+      defaultAccountExpiry: document.getElementById('setDefaultAccountExpiry').value.trim(),
+      defaultAvailableInvites: document.getElementById('setDefaultAvailableInvites').value.trim(),
+      staffName: document.getElementById('setStaffName').value.trim(),
+      fixedQuery: document.getElementById('setFixedQuery').value.trim(),
+      variableQueryParams: collectParamRows(),
+      instrSteps: editSteps.map(s => ({
+        title: s.title || '',
+        body: s.body || '',
+        copyValue: s.copyValue || '',
+        image: s.image || '',
+        imageCaption: s.imageCaption || ''
+      })),
+      tplSubject: document.getElementById('setTplSubject').value,
+      tplBody: document.getElementById('setTplBody').value
+    };
+    try{
+      saveJSON(SETTINGS_KEY, next);
+    }catch(e){
+      toast('保存失敗：画像サイズが大きすぎる可能性があります', true);
+      return;
+    }
+    SETTINGS = next;
+    refreshAll();
+    closeSettings();
+    toast('設定を保存しました');
+  }
+  function resetSettings(){
+    if(!confirm('全設定を初期値に戻します。よろしいですか？')) return;
+    SETTINGS = cloneDefaults();
+    saveJSON(SETTINGS_KEY, SETTINGS);
+    openSettings();
+    refreshAll();
+    toast('初期値に戻しました');
+  }
+
+  /* ===== 共通 ===== */
+  function refreshAll(){
+    refreshUrlSection();
+    renderInstrCards();
+    updateMailPreview();
+    renderHistory();
+  }
+
+  let toastTimer;
+  function toast(msg, isError){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#dc2626' : '#1f2937';
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+  }
+
+  /* サブタブ・指示書見出しの吸着位置を固定ヘッダーの高さに合わせる */
+  function setStickyOffset(){
+    const tb = document.querySelector('.sticky-top');
+    const st = document.querySelector('.subtabs');
+    const topH = tb ? tb.offsetHeight : 96;
+    const subH = st ? st.offsetHeight : 0;
+    document.documentElement.style.setProperty('--topbar-h', topH + 'px');
+    INSTR_STICKY_TOP = topH + subH;
+    document.documentElement.style.setProperty('--instr-sticky-top', INSTR_STICKY_TOP + 'px');
+    const pt = document.getElementById('instrStickyHead');
+    const ptH = (pt && pt.offsetHeight) ? pt.offsetHeight : 0;
+    INSTR_TITLE_TOP = INSTR_STICKY_TOP + ptH;
+    document.documentElement.style.setProperty('--instr-title-top', INSTR_TITLE_TOP + 'px');
+    renderProgressBar();
+  }
+  window.addEventListener('resize', setStickyOffset);
+  window.addEventListener('scroll', () => requestAnimationFrame(updateInstrProgress), {passive:true});
+
+  /* 初期化 */
+  document.getElementById('availableInvites').value = SETTINGS.defaultAvailableInvites || '';
+  refreshAll();
+  updateGoInstrBtn();
+  switchScreen('work');
+  switchSubTab('input');
+  setStickyOffset();
+  pullAll();
+</script>
+</body>
+</html>
