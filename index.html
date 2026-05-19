@@ -785,7 +785,7 @@
 </div></div>
 <div class="sticky-top">
   <header>
-    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519b</span></h1>
+    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519c</span></h1>
     <div class="actions">
       <span class="sync-status" id="syncStatus"></span>
       <button onclick="openMemberDB()">会員DB</button>
@@ -1229,10 +1229,14 @@ Cosmetic Science デジタル版 事務局
     "9": {"cap":"OneStream：備考","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAAxCAMAAAAx3CdVAAABgFBMVEX+/v7u8fIkKjeZpLa2u8emqbccJDPo7vLEw8jo5+m8xtOqtsXGzNWqsbvY1tu4wc20tL02NDrz6OOZnKvW3ebh3Nd5g5WLlajJ2OfWzcnTxLZHWW1TS07Eu7vc4+1pbXSjr8BgdY2Zq8ElNEiHhoeAh5pTa4KKnbUhLkKTgHOUjpiQnraAc25/kqh1hqKfoKt5f5R3f4p5aGV6aV5sfJaom4+pvtJsX1lac4uzpJhVaHvP1d/Uz9bW4/IpMD2RfXAfIy8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABNdgoFAAABXElEQVR42u3b107DMBhAYcd2EseZbbqgk2723qO8/1NB03KJhCyQAJ3vKrKUm19HdqIoQgAAgK9qNppJZAfvV1HiiSjcrPanw/OY4cCdH5cn/tU4FIk/y4vRJqzrWiCD5THTgaudw6hQRtkwy4t23Bo31ou7taCb3L4u2bPg6mBhRkZrGz3Z4qztp3a9uJKym/Zegj3mA0f9WKtU+f5z3cxUojvV4qWUd82elA8eA4Kbus7LdViJOW3FOq9OQrEv5VxcSHYsuIeVal+1S9URmX5sGOVtn7Hm5khObpgPXMMqlbFap9UZGBXbx/X7WhAEkwXjgbNsEHlhllU7VZKHHy+L02HLMhwAAAAAAODC47MNPq/D+c6Q4QH4K3sW5yAIC4QFwgIIC4QFwgIIC4QFwgIIC4QFwgIIC4QFwgIIC4QFwgIIC7/4Px1AfP9vXASJn+mDskAdAAAAwD/zBiVQDvSkoUT7AAAAAElFTkSuQmCC"},
     "10": {"cap":"OneStream：発行ボタン","img":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAK8AAAA8CAMAAAAnvhqqAAABgFBMVEX+/v5bcN5Xbd7q6/To6OlugeKxueJleN+ap+eIl+d2iOSQnuVmeeDu8PXV2vaqte2zvPC7xPGhrevM0vTd4fjByfPHzOZdcuDZ2+rd4O0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVH8JmAAABW0lEQVR42u2Yy07EMAxFE7sttusmTV8z/P+PkoJAaNhMACkZ8FEXUVdHVmq71znDMAzDMAzDMAzDMP4Zifv7EV4r60YPRehQVXdV8EWAhpq+S6FuFo4VdZGKfT3V9B3N13x/6DtZfb/t+z4WPh2h5foK0UiRWfMkiySckYZ9YQyICafEF01IC2bizQhsynfBKUhyW5AZE8uJtlxfnlwUQjeoLCHQeR+43fqCBMwv84Pc75jy5cgrUd+urxInjLgz9bNDVmFMfbv3Ifuu6ILDNWr+8hhAcL5taG31s1zWOesOCnT66jb7hn0vsjtSDPMmQBODRNe0r1+2Rf2MuCvwKrm9BW55voH25z/aa9NV0fPkm57HH5vD2/Hr9vCA+5n5/l1ffjDf8v95WGrmJQOU5jv+qOn7zGXxGfixqxqgXfmpCLpWDii7Yyjg6CrrOuyKwAYia7wbi/eN3+YFwyAWTdrrLWoAAAAASUVORK5CYII="}
   };
-  Object.keys(MANUAL_IMAGES).forEach(function(k){
-    var s = DEFAULT_SETTINGS.instrSteps[k];
-    if(s){ s.image = MANUAL_IMAGES[k].img; s.imageCaption = MANUAL_IMAGES[k].cap; }
-  });
+  function applyManualImages_(stg){
+    if(!stg || !stg.instrSteps) return;
+    Object.keys(MANUAL_IMAGES).forEach(function(k){
+      var s = stg.instrSteps[k];
+      if(s){ s.image = MANUAL_IMAGES[k].img; s.imageCaption = MANUAL_IMAGES[k].cap; }
+    });
+  }
+  applyManualImages_(DEFAULT_SETTINGS);
 
   function cloneDefaults(){return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));}
 
@@ -1297,6 +1301,13 @@ Cosmetic Science デジタル版 事務局
         revealTool_();
         saveJSON(STORAGE_KEY, Array.isArray(d.records) ? d.records : []);
         saveJSON(MEMBERS_KEY, Array.isArray(d.members) ? d.members : []);
+        if(d.settings){
+          SETTINGS = {...cloneDefaults(), ...d.settings};
+          applyManualImages_(SETTINGS);
+          saveJSON(SETTINGS_KEY, SETTINGS);
+        } else {
+          pushSettings();
+        }
         refreshAll();
         setSyncStatus('ok');
       } else {
@@ -1323,6 +1334,12 @@ Cosmetic Science デジタル版 事務局
   }
   function pushRecords(){ pushTo_({records: loadRecords()}); }
   function pushMembers(){ pushTo_({members: loadMembers()}); }
+  function settingsForSync_(){
+    const c = JSON.parse(JSON.stringify(SETTINGS));
+    if(Array.isArray(c.instrSteps)) c.instrSteps.forEach(function(s){ s.image = ''; });
+    return c;
+  }
+  function pushSettings(){ pushTo_({settings: settingsForSync_()}); }
   function commitRecords(arr){ saveJSON(STORAGE_KEY, arr); pushRecords(); }
   function commitMembers(arr){ saveJSON(MEMBERS_KEY, arr); pushMembers(); }
 
@@ -2200,13 +2217,15 @@ Cosmetic Science デジタル版 事務局
     }
     SETTINGS = next;
     refreshAll();
+    pushSettings();
     closeSettings();
-    toast('設定を保存しました');
+    toast('設定を保存しました（スプレッドシートにも反映）');
   }
   function resetSettings(){
     if(!confirm('全設定を初期値に戻します。よろしいですか？')) return;
     SETTINGS = cloneDefaults();
     saveJSON(SETTINGS_KEY, SETTINGS);
+    pushSettings();
     openSettings();
     refreshAll();
     toast('初期値に戻しました');
