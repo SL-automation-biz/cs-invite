@@ -785,7 +785,7 @@
 </div></div>
 <div class="sticky-top">
   <header>
-    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519d</span></h1>
+    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519e</span></h1>
     <div class="actions">
       <span class="sync-status" id="syncStatus"></span>
       <button onclick="openMemberDB()">会員DB</button>
@@ -1098,6 +1098,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
+  const APP_BUILD = {version:'rev.0519e', date:'2026-05-19', note:'設定のスプレッドシート管理化・更新履歴機能の追加'};
 
   const DEFAULT_SETTINGS = {
     defaultInviteExpiry:'', defaultAccountExpiry:'', defaultAvailableInvites:'',
@@ -1197,6 +1198,7 @@
         } else {
           pushSettings();
         }
+        recordBuildIfNew_(d.changelog);
         refreshAll();
         setSyncStatus('ok');
       } else {
@@ -1229,6 +1231,12 @@
     return c;
   }
   function pushSettings(){ pushTo_({settings: settingsForSync_()}); }
+  function recordBuildIfNew_(changelog){
+    if(!Array.isArray(changelog)) return;
+    var hit = changelog.some(function(c){ return (c.version||'') === APP_BUILD.version; });
+    if(hit) return;
+    pushTo_({changelog: {date: APP_BUILD.date, version: APP_BUILD.version, description: APP_BUILD.note}});
+  }
   function commitRecords(arr){ saveJSON(STORAGE_KEY, arr); pushRecords(); }
   function commitMembers(arr){ saveJSON(MEMBERS_KEY, arr); pushMembers(); }
 
