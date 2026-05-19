@@ -983,7 +983,13 @@
     </div>
     <div class="modal-section">
       <h4>会員一覧 <span style="font-size:11px;color:var(--muted);" id="memberCount"></span></h4>
-      <input type="text" id="memberSearch" placeholder="検索" oninput="renderMembers()" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;margin-bottom:6px;font-size:12px;">
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input type="text" id="memberSearch" placeholder="検索" oninput="renderMembers()" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+        <select id="memberDbFilter" onchange="renderMembers()" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:#fff;">
+          <option value="all">全件表示</option>
+          <option value="unissued">未発行のみ</option>
+        </select>
+      </div>
       <div id="memberListContainer" style="max-height:40vh;overflow-y:auto;"></div>
     </div>
     <div class="modal-actions">
@@ -1098,7 +1104,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519k', date:'2026-05-19', note:'「初期値に戻す」が指示書ステップ等を消す不具合を修正。GASが保持する既定値から正しく復元するよう変更。'};
+  const APP_BUILD = {version:'rev.0519l', date:'2026-05-19', note:'会員DB画面に「未発行のみ／全件表示」フィルタと発行済バッジを追加。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1872,19 +1878,26 @@
     renderMemberPicker();
     const members = loadMembers();
     const q = (document.getElementById('memberSearch').value||'').toLowerCase();
-    const filtered = members.filter(m => !q || [m.name,m.company,m.email].some(v => (v||'').toLowerCase().includes(q)));
+    const fEl = document.getElementById('memberDbFilter');
+    const filter = fEl ? fEl.value : 'all';
+    const issued = new Set(loadRecords().map(r => (r.email||'').toLowerCase()).filter(Boolean));
+    let filtered = members.filter(m => !q || [m.name,m.company,m.email].some(v => (v||'').toLowerCase().includes(q)));
+    if(filter === 'unissued'){
+      filtered = filtered.filter(m => !issued.has((m.email||'').toLowerCase()));
+    }
     document.getElementById('memberCount').textContent = `（${filtered.length}/${members.length}件）`;
     const container = document.getElementById('memberListContainer');
     if(filtered.length === 0){
-      container.innerHTML = '<div class="empty">会員データがありません。</div>';
+      container.innerHTML = '<div class="empty">' + ((q||filter==='unissued') ? '該当する会員がいません。' : '会員データがありません。') + '</div>';
       return;
     }
     let html = `<table>
       <thead><tr><th style="width:120px;">氏名</th><th style="width:160px;">会社</th><th>メール</th><th style="width:140px;">操作</th></tr></thead>
       <tbody>`;
     filtered.forEach(m => {
+      const isIssued = issued.has((m.email||'').toLowerCase());
       html += `<tr>
-        <td class="text-left">${escapeHtml(m.name)}</td>
+        <td class="text-left">${escapeHtml(m.name)}${isIssued?' <span class="member-pick-badge">発行済</span>':''}</td>
         <td class="text-left">${escapeHtml(m.company||'')}</td>
         <td class="text-left" style="font-size:11px;">${escapeHtml(m.email)}</td>
         <td>
