@@ -785,7 +785,7 @@
 </div></div>
 <div class="sticky-top">
   <header>
-    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519c</span></h1>
+    <h1>CSデジタル版 招待発行管理 <span style="font-size:10px;font-weight:400;opacity:.55;">rev.0519d</span></h1>
     <div class="actions">
       <span class="sync-status" id="syncStatus"></span>
       <button onclick="openMemberDB()">会員DB</button>
@@ -1100,120 +1100,9 @@
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
 
   const DEFAULT_SETTINGS = {
-    defaultInviteExpiry: '2026/12/31 23:59',
-    defaultAccountExpiry: '2027/05/31 23:59',
-    defaultAvailableInvites: '',
-    staffName: '魚井',
-    fixedQuery: '?郵便番号=---&住所=---',
-    variableQueryParams: [
-      {key:'ParentMail', value:'{{email}}'},
-      {key:'ParentCompany', value:'{{company}}'}
-    ],
-    instrSteps: [
-      {
-        title:'対象の確認',
-        body:'契約者：{{name}}\n所属　：{{company}}\nメール：{{email}}\n\n【操作場所】\nOneStream 管理画面 → ユーザー管理 → 招待 → 新規作成',
-        image:'', imageCaption:''
-      },
-      {
-        title:'① タイトル',
-        copyValue:'親メールの招待',
-        body:'「親メールの招待」と入力',
-        image:'', imageCaption:''
-      },
-      {
-        title:'② 登録可能人数',
-        copyValue:'{{available_invites}}',
-        body:'「人数を制限する」を選択し、「{{available_invites}}」名を入力\n（プラン記載人数 − 主会員1名 − 既存サブ会員）',
-        image:'', imageCaption:''
-      },
-      {
-        title:'③ 招待の有効期間',
-        body:'「即時有効」のまま（変更不要）',
-        image:'', imageCaption:''
-      },
-      {
-        title:'④ 終了日時',
-        copyValue:'{{invite_expiry}}',
-        body:'「日時を指定する」を選択し、「{{invite_expiry}}」を入力\n※キーボード入力推奨',
-        image:'', imageCaption:''
-      },
-      {
-        title:'⑤ アカウントの有効期間',
-        copyValue:'{{account_expiry}}',
-        body:'「有効期限を設定する」を選択し、「{{account_expiry}}」を入力\n※キーボード入力推奨',
-        image:'', imageCaption:''
-      },
-      {
-        title:'⑥ 参加グループ',
-        copyValue:'2026年度会員\nA国内サブ会員\n＜管理用＞閲覧可能会員\n',
-        body:'・2026年度会員\n・A国内サブ会員\n・＜管理用＞閲覧可能会員',
-        image:'', imageCaption:''
-      },
-      {
-        title:'⑦ 入力項目',
-        body:'【基本項目】\nON（紫色）：名前、カスタム項目、URLによる自動入力\nOFF（グレー）：電話番号\n\n【カスタム項目の内訳】\nON（紫色）：\n・所属企業・大学・組織名\n・所属2（部署・学科など）\n・役職\n・郵便番号\n・住所\nOFF（グレー）：\n・大学卒業予定年',
-        image:'', imageCaption:''
-      },
-      {
-        title:'⑧ アカウント作成を承認制にする',
-        body:'チェックを入れない（無効のまま）',
-        image:'', imageCaption:''
-      },
-      {
-        title:'⑨ 備考',
-        body:'必要に応じて入力',
-        image:'', imageCaption:''
-      },
-      {
-        title:'発行後の作業',
-        body:'1. 上記設定で「招待を作成」を実行\n2. 表示された招待URLを本システムの「招待ベースURL」欄へ貼り付け\n3.「URL作成」ボタンで完成リンクを生成し、契約者へ案内メールを送信',
-        image:'', imageCaption:''
-      }
-    ],
-    tplSubject: '【Cosmetic Science デジタル版】サブ会員 招待URLのご案内（{{name}}様）',
-    tplBody: `{{company}} {{name}} 様
-
-平素より大変お世話になっております。
-Cosmetic Science 購読事務局の{{staff}}です。
-
-このたびはCosmetic Science デジタル版をお申し込みいただき、誠にありがとうございます。
-ご決済を確認いたしましたので、サブ会員の招待用URLを下記のとおり発行いたします。
-
-────────────────────────────
-■ 契約者情報
-  ご契約者：{{name}} 様
-  ご所属　：{{company}}
-
-■ 招待URL
-  {{final_url}}
-
-■ 有効期限
-  招待URL使用期限：{{invite_expiry}}
-
-■ 登録可能人数
-  サブ会員として招待できる人数は {{available_invites}}名 となります。
-────────────────────────────
-
-■ ご利用方法
-  1. 上記の招待URLを、貴社内で閲覧権限を付与したい方へお送りください。
-  2. URLを受け取った方は、リンクから登録フォームへ進み、必要情報を入力のうえ登録を完了してください。
-  3. 登録完了後、すぐに会員ページよりコンテンツを閲覧いただけます。
-
-■ ご注意事項
-  ・本URLは登録可能人数の範囲内で繰り返しご利用いただけます。
-  ・有効期限を過ぎますと招待は無効となります。
-  ・URLの取り扱いには十分ご注意ください。
-
-ご不明な点がございましたら、本メールへのご返信にてお気軽にお問い合わせくださいませ。
-
-何卒よろしくお願い申し上げます。
-
-──────────────────────
-株式会社ソフィアリンクス
-Cosmetic Science デジタル版 事務局
-担当：{{staff}}
-──────────────────────`
+    defaultInviteExpiry:'', defaultAccountExpiry:'', defaultAvailableInvites:'',
+    staffName:'', fixedQuery:'', variableQueryParams:[], instrSteps:[],
+    tplSubject:'', tplBody:''
   };
 
   /* OneStream操作画面スクリーンショット（指示書ステップに自動添付） */
