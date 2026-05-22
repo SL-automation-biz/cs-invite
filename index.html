@@ -1104,7 +1104,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519l', date:'2026-05-19', note:'会員DB画面に「未発行のみ／全件表示」フィルタと発行済バッジを追加。'};
+  const APP_BUILD = {version:'rev.0519m', date:'2026-05-19', note:'発行履歴一覧に編集可能なメモ列を追加。更新日の表記ゆれ（曜日表記の混在）を修正。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1276,6 +1276,18 @@
     const p = n => String(n).padStart(2,'0');
     return j.getUTCFullYear() + '-' + p(j.getUTCMonth()+1) + '-' + p(j.getUTCDate())
       + ' ' + p(j.getUTCHours()) + ':' + p(j.getUTCMinutes()) + ':' + p(j.getUTCSeconds());
+  }
+  /* スプレッドシートが日付型に自動変換した値も含め、YYYY-MM-DD表記に統一する */
+  function fmtHistDate(s){
+    s = String(s||'').trim();
+    if(!s) return '';
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(iso) return iso[0];
+    const d = new Date(s);
+    if(isNaN(d.getTime())) return s.slice(0,10);
+    const j = new Date(d.getTime() + 9*3600*1000);
+    const p = n => String(n).padStart(2,'0');
+    return j.getUTCFullYear() + '-' + p(j.getUTCMonth()+1) + '-' + p(j.getUTCDate());
   }
 
   function getFormData(){
@@ -1636,6 +1648,13 @@
     commitRecords(records);
     renderHistory();
   }
+  function changeMemo(id, memo){
+    const records = loadRecords();
+    const r = records.find(x => x.id === id);
+    if(!r) return;
+    r.memo = memo;
+    commitRecords(records);
+  }
   function clearAll(){
     commitRecords([]);
     clearForm();
@@ -1670,19 +1689,20 @@
     }
     let html = `<table>
       <thead><tr>
-        <th style="width:80px;">更新日</th>
-        <th style="width:110px;">氏名</th>
-        <th style="width:140px;">会社</th>
-        <th style="width:150px;">メール</th>
-        <th style="width:55px;">人数</th>
+        <th style="width:78px;">更新日</th>
+        <th style="width:100px;">氏名</th>
+        <th style="width:120px;">会社</th>
+        <th style="width:140px;">メール</th>
+        <th style="width:46px;">人数</th>
         <th>完成URL</th>
-        <th style="width:100px;">ステータス</th>
-        <th style="width:160px;">操作</th>
+        <th style="width:94px;">ステータス</th>
+        <th style="width:150px;">メモ</th>
+        <th style="width:150px;">操作</th>
       </tr></thead><tbody>`;
     filtered.forEach(r => {
       const url = r.final_url || r.invite_url || '';
       const shortUrl = url ? (url.length > 60 ? url.slice(0,60)+'…' : url) : '（未生成）';
-      const dt = (r.updated_at||'').slice(0,10);
+      const dt = fmtHistDate(r.updated_at);
       html += `<tr>
         <td>${dt}</td>
         <td class="text-left">${escapeHtml(r.name)}</td>
@@ -1695,6 +1715,7 @@
             ${Object.keys(STATUS_LABEL).map(k => `<option value="${k}" ${r.status===k?'selected':''}>${STATUS_LABEL[k]}</option>`).join('')}
           </select>
         </td>
+        <td><textarea onchange="changeMemo('${r.id}', this.value)" rows="2" placeholder="メモ" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:10px;border:1px solid var(--border);border-radius:3px;padding:3px;resize:vertical;">${escapeHtml(r.memo||'')}</textarea></td>
         <td>
           <div class="row-actions">
             <button onclick="loadRecord('${r.id}')">編集</button>
