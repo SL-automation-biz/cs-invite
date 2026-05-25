@@ -777,6 +777,7 @@
     .form-actions button{flex:1;}
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
 <div id="authGate"><div class="box">
@@ -930,6 +931,21 @@
           </div>
           <div class="mail-subject" id="previewSubject">（件名）</div>
           <div class="mail-body" id="previewBody">（本文）</div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">サブ会員向け案内PDF ＋ Gmail下書き</div>
+          <p class="hint" style="margin:6px 0 12px;">
+            完成URLを記載したQRコード入りのPDFを生成し、契約者宛てのGmail下書きを自動作成します。Gmailの「下書き」フォルダで内容を確認のうえ送信してください。
+          </p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button class="btn-next" id="btnCreateSubMemberDraft" onclick="createSubMemberDraft()" style="padding:10px 22px;">サブ会員向け案内PDF ＋ Gmail下書きを作成</button>
+            <a class="btn btn-sub btn-sm" href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noopener" style="text-decoration:none;">Gmailの下書きを開く ↗</a>
+          </div>
+          <div class="hint" style="margin-top:10px;font-size:11px;">
+            ※ 完成URLが生成済み・メールアドレス入力済みのときに動作します。<br>
+            ※ 初回利用時はGoogleの追加権限許可ダイアログが出ます（Gmailで下書きを作成するため）。
+          </div>
         </section>
 
       </div>
@@ -1104,7 +1120,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519n', date:'2026-05-19', note:'ネット復旧（online イベント）を検知して、発行履歴・会員DBを自動再同期するよう改善。'};
+  const APP_BUILD = {version:'rev.0519o', date:'2026-05-19', note:'サブ会員向け案内PDF＋Gmail下書きの自動作成機能を追加。QRコードはツール内で生成し、PDF化とGmail下書き作成はGAS側で行う。利用にはGAS再デプロイとGmail権限の追加許可が必要。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1245,6 +1261,144 @@
     pushRecords();
     pushMembers();
   });
+
+  /* ===== サブ会員向け案内PDF ＋ Gmail下書き作成 ===== */
+  function generateQrPngDataUrl(text){
+    if(typeof qrcode !== 'function') throw new Error('QRライブラリが読み込まれていません');
+    const cell = 8, margin = 4;
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount();
+    const size = (n + margin*2) * cell;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = '#000';
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      if(qr.isDark(r,c)) ctx.fillRect((c+margin)*cell,(r+margin)*cell,cell,cell);
+    }
+    return cv.toDataURL('image/png');
+  }
+
+  function buildSubMemberPdfHtml_(d){
+    const url = d.final_url || '';
+    const qr = d.qrPng || '';
+    const passRule = '半角8文字以上：数字、英大文字・小文字をそれぞれ含む';
+    const e = function(s){ return escapeHtml(s); };
+    return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>アカウント登録のご案内</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;color:#23303a;}
+.page{width:210mm;min-height:297mm;background:#fff;}
+.pg-head{background:#1d3f5e;color:#fff;padding:24px 24mm 22px;}
+.kicker{font-size:11px;letter-spacing:.22em;opacity:.85;}
+.pg-head h1{margin:8px 0 0;font-size:25px;font-weight:700;}
+.pg-head .lead{margin-top:6px;font-size:12.5px;opacity:.9;line-height:1.7;}
+.pg-body{padding:22px 24mm 0;}
+.intro{font-size:13px;line-height:1.95;margin:0 0 18px;}
+.cta{border:1.5px solid #2a7fa8;border-radius:12px;background:#eef4f8;padding:20px 24px;margin:0 0 12px;}
+.cta-row{display:flex;gap:22px;align-items:center;}
+.cta-left{flex:1;}
+.cta-t{font-size:13px;font-weight:700;color:#1d3f5e;margin:0 0 12px;}
+.btn-reg{display:inline-block;text-decoration:none;background:#2a7fa8;color:#fff;font-weight:700;font-size:16px;padding:14px 32px;border-radius:9px;}
+.cta-qr{text-align:center;flex:0 0 auto;border-left:1px dashed #b9cdd9;padding-left:22px;}
+.cta-qr img{width:124px;height:124px;display:block;border:1px solid #d9e0e7;background:#fff;}
+.qr-cap{font-size:11px;color:#6b7785;margin-top:7px;line-height:1.5;}
+.url-fb{font-size:11px;color:#6b7785;margin:0 0 6px;line-height:1.7;}
+.url-box{background:#f4f7fa;border:1px solid #d9e0e7;border-radius:6px;padding:9px 12px;margin:0 0 22px;font-family:"Consolas","Menlo",monospace;font-size:10.5px;color:#2a7fa8;word-break:break-all;line-height:1.55;}
+.sec-h{font-size:14px;font-weight:700;color:#1d3f5e;border-bottom:2px solid #1d3f5e;padding-bottom:6px;margin:20px 0 12px;}
+.sec-h .ic{display:inline-block;background:#1d3f5e;color:#fff;font-size:11px;border-radius:4px;padding:2px 9px;margin-right:8px;}
+.steps{margin:0;padding:0;list-style:none;}
+.step{display:flex;gap:14px;padding:12px 0;border-bottom:1px dashed #d9e0e7;}
+.step:last-child{border-bottom:none;}
+.step .no{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#1d3f5e;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.sb{flex:1;font-size:12.5px;line-height:1.75;}
+.st{display:block;font-weight:700;font-size:13.5px;color:#23303a;margin-bottom:3px;}
+.sd{display:block;color:#6b7785;}
+.after{font-size:12.5px;line-height:1.9;margin:12px 0 0;}
+.notes{background:#fdf3f3;border:1px solid #f0cccc;border-radius:9px;padding:14px 18px;margin:14px 0 0;}
+.notes ul{margin:0;padding-left:18px;}
+.notes li{font-size:12px;line-height:1.9;margin:4px 0;}
+.pg-foot{margin-top:24px;background:#15314a;color:#fff;padding:16px 24mm;font-size:11px;line-height:1.85;}
+.pg-foot .ttl{font-weight:700;font-size:12px;margin-bottom:2px;}
+.pg-foot a{color:#9fd0e6;}
+@page{size:A4;margin:0;}
+</style></head><body>
+<div class="page">
+  <div class="pg-head">
+    <div class="kicker">COSMETIC SCIENCE デジタル版</div>
+    <h1>アカウント登録のご案内</h1>
+    <div class="lead">Cosmetic Science デジタル版をご利用いただくための、アカウント作成手順をご案内します。</div>
+  </div>
+  <div class="pg-body">
+    <p class="intro">
+      このたび、<strong>Cosmetic Science デジタル版</strong> をご契約いただき、ありがとうございます。<br>
+      ご契約者（メイン会員と呼びます）以外の皆さまにおかれましては、下記の手順に沿って、ご自身のアカウントを作成してください。
+    </p>
+    <div class="cta"><div class="cta-row">
+      <div class="cta-left">
+        <div class="cta-t">▼ パソコンの方は、こちらのボタンから登録ページへ</div>
+        <a class="btn-reg" href="${e(url)}">ご登録はこちら →</a>
+      </div>
+      <div class="cta-qr">
+        <img src="${qr}" alt="登録用QRコード">
+        <div class="qr-cap">スマートフォンの方は<br>QRコードを読み取り</div>
+      </div>
+    </div></div>
+    <p class="url-fb">ボタン・QRコードがご利用になれない場合は、下記URLをブラウザのアドレス欄に貼り付けてください。</p>
+    <div class="url-box">${e(url)}</div>
+    <div class="sec-h"><span class="ic">手順</span>登録ページでの入力項目</div>
+    <ul class="steps">
+      <li class="step"><div class="no">1</div><div class="sb"><span class="st">名前</span><span class="sd">お名前を入力してください。入力の際は姓と名の間に全角スペースを入れてください（例:山田　太郎）。</span></div></li>
+      <li class="step"><div class="no">2</div><div class="sb"><span class="st">所属2（部署・学科など）</span><span class="sd">部署名・部課名などをご入力ください。</span></div></li>
+      <li class="step"><div class="no">3</div><div class="sb"><span class="st">役職</span><span class="sd">役職をご入力ください（役職がない場合は「なし」とご入力ください）。</span></div></li>
+      <li class="step"><div class="no">4</div><div class="sb"><span class="st">メールアドレス</span><span class="sd">ご自身のメールアドレスをご入力ください。</span></div></li>
+      <li class="step"><div class="no">5</div><div class="sb"><span class="st">パスワード</span><span class="sd">任意のパスワードをご設定ください（入力ルール：${passRule}）。</span></div></li>
+    </ul>
+    <p class="after">入力後、画面の案内に従ってアカウント作成を完了してください。登録完了後、すぐにコンテンツを閲覧いただけます。</p>
+    <div class="sec-h"><span class="ic">注意</span>ご登録時の注意点</div>
+    <div class="notes"><ul>
+      <li>「所属企業・大学・組織名」欄は法人契約のため変更できません。表示されている内容のままお進みください。</li>
+      <li>郵便番号・住所のご入力は不要です。空欄のままお進みください。</li>
+      <li>アカウントはお一人につき1つです。パスワードを他の方と共有しないようお願いいたします。</li>
+      <li>今後、セキュリティ強化のため「2段階認証」の導入を予定しております。開始時期・設定方法につきましては、改めてご案内いたします。</li>
+    </ul></div>
+  </div>
+  <div class="pg-foot">
+    <div class="ttl">株式会社ソフィアリンクス ／ Cosmetic Science デジタル版 事務局</div>
+    お問い合わせ：<a href="mailto:cs-support@cosmetic-science.net">cs-support@cosmetic-science.net</a><br>
+    ご不明な点は、本案内をお送りした方（Cosmetic Scienceデジタル版ご契約者）または上記事務局までお問い合わせください。
+  </div>
+</div>
+</body></html>`;
+  }
+
+  function createSubMemberDraft(){
+    if(!gasConfigured_()){ toast('GASが未設定です', true); return; }
+    const d = getFormData();
+    if(!d.email){ toast('メールアドレスを入力してください', true); return; }
+    if(!BUILT_URL){ toast('先に「URL作成」を押して完成URLを生成してください', true); return; }
+    const subject = document.getElementById('previewSubject').textContent;
+    const body = document.getElementById('previewBody').textContent;
+    let qrPng;
+    try{ qrPng = generateQrPngDataUrl(BUILT_URL); }
+    catch(e){ toast('QRコードの生成に失敗しました：' + e.message, true); return; }
+    const pdfHtml = buildSubMemberPdfHtml_({ final_url: BUILT_URL, qrPng: qrPng });
+    const safeName = (d.name||'契約者').replace(/[\\\/:\*\?"<>\|]/g,'_');
+    const pdfFilename = 'CSデジタル版_アカウント登録のご案内_' + safeName + '様.pdf';
+    pushTo_({
+      createDraft: {
+        to: d.email,
+        subject: subject,
+        body: body,
+        pdfHtml: pdfHtml,
+        pdfFilename: pdfFilename
+      }
+    });
+    toast('Gmail下書きを作成しています。数秒後にGmailの「下書き」フォルダをご確認ください。');
+  }
   function recordBuildIfNew_(changelog){
     if(!Array.isArray(changelog)) return;
     var hit = changelog.some(function(c){ return (c.version||'') === APP_BUILD.version; });
