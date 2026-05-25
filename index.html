@@ -1104,7 +1104,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519m', date:'2026-05-19', note:'発行履歴一覧に編集可能なメモ列を追加。更新日の表記ゆれ（曜日表記の混在）を修正。'};
+  const APP_BUILD = {version:'rev.0519n', date:'2026-05-19', note:'ネット復旧（online イベント）を検知して、発行履歴・会員DBを自動再同期するよう改善。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1238,6 +1238,13 @@
     return c;
   }
   function pushSettings(){ pushTo_({settings: settingsForSync_()}); }
+  /* ネット復旧時に自動再同期：オフライン中の変更をスプレッドシートへ反映 */
+  window.addEventListener('online', function(){
+    if(!gasConfigured_()) return;
+    toast('オンラインに復帰しました。同期します…');
+    pushRecords();
+    pushMembers();
+  });
   function recordBuildIfNew_(changelog){
     if(!Array.isArray(changelog)) return;
     var hit = changelog.some(function(c){ return (c.version||'') === APP_BUILD.version; });
