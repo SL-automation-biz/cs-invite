@@ -1106,7 +1106,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519r', date:'2026-05-19', note:'PDFのフッターをページ最下部まで張り付かせ、注意点ボックスとの間に余白を確保（flexレイアウトで自動配置）。フッターのパディングも厚めにして視認性アップ。'};
+  const APP_BUILD = {version:'rev.0519s', date:'2026-05-19', note:'案内メールの新文面を反映（管理者会員／デジタル会員呼称・PDFガイドへの誘導・人数説明の刷新）。プレースホルダ {{total_invites}}（管理者1名＋デジタル会員可能人数の合計）を追加。新文面の反映にはGAS再デプロイと「初期値に戻す」が必要。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1570,12 +1570,14 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
 
   function buildPreviewData(){
     const raw = getFormData();
+    const ai = parseInt(raw.available_invites, 10);
     return {
       ...raw,
       fixed_query: SETTINGS.fixedQuery || '（なし）',
       final_url: BUILT_URL || '（「URL作成」ボタンを押してください）',
       staff: SETTINGS.staffName || '',
-      today: todayStr()
+      today: todayStr(),
+      total_invites: (isNaN(ai) || ai <= 0) ? '' : String(ai + 1)
     };
   }
 
