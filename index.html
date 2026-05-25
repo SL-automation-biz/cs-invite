@@ -934,12 +934,12 @@
         </section>
 
         <section class="panel">
-          <div class="panel-title">サブ会員向け案内PDF ＋ Gmail下書き</div>
+          <div class="panel-title">デジタル会員向け案内PDF ＋ Gmail下書き</div>
           <p class="hint" style="margin:6px 0 12px;">
-            完成URLを記載したQRコード入りのPDFを生成し、契約者宛てのGmail下書きを自動作成します。Gmailの「下書き」フォルダで内容を確認のうえ送信してください。
+            完成URLを記載したQRコード入りのPDFを生成し、管理者会員（契約者）宛てのGmail下書きを自動作成します。Gmailの「下書き」フォルダで内容を確認のうえ送信してください。
           </p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <button class="btn-next" id="btnCreateSubMemberDraft" onclick="createSubMemberDraft()" style="padding:10px 22px;">サブ会員向け案内PDF ＋ Gmail下書きを作成</button>
+            <button class="btn-next" id="btnCreateSubMemberDraft" onclick="createSubMemberDraft()" style="padding:10px 22px;">デジタル会員向け案内PDF ＋ Gmail下書きを作成</button>
             <a class="btn btn-sub btn-sm" href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noopener" style="text-decoration:none;">Gmailの下書きを開く ↗</a>
           </div>
           <div class="hint" style="margin-top:10px;font-size:11px;">
@@ -1120,7 +1120,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519o', date:'2026-05-19', note:'サブ会員向け案内PDF＋Gmail下書きの自動作成機能を追加。QRコードはツール内で生成し、PDF化とGmail下書き作成はGAS側で行う。利用にはGAS再デプロイとGmail権限の追加許可が必要。'};
+  const APP_BUILD = {version:'rev.0519p', date:'2026-05-19', note:'呼称をメイン会員→管理者会員（購読のお申込者）、サブ会員→デジタル会員に変更。PDF本文・フッター・UIパネル名・ボタン名に反映。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1335,7 +1335,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   <div class="pg-body">
     <p class="intro">
       このたび、<strong>Cosmetic Science デジタル版</strong> をご契約いただき、ありがとうございます。<br>
-      ご契約者（メイン会員と呼びます）以外の皆さまにおかれましては、下記の手順に沿って、ご自身のアカウントを作成してください。
+      本案内は、ご契約のもとでデジタル版をご利用いただく <strong>「デジタル会員」</strong> の皆さま向けのご案内です。下記の手順に沿って、ご自身のアカウントを作成してください。
     </p>
     <div class="cta"><div class="cta-row">
       <div class="cta-left">
@@ -1369,7 +1369,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   <div class="pg-foot">
     <div class="ttl">株式会社ソフィアリンクス ／ Cosmetic Science デジタル版 事務局</div>
     お問い合わせ：<a href="mailto:cs-support@cosmetic-science.net">cs-support@cosmetic-science.net</a><br>
-    ご不明な点は、本案内をお送りした方（Cosmetic Scienceデジタル版ご契約者）または上記事務局までお問い合わせください。
+    ご不明な点は、本案内をお送りした方（Cosmetic Scienceデジタル版の <strong>管理者会員</strong>）または上記事務局までお問い合わせください。
   </div>
 </div>
 </body></html>`;
