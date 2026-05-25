@@ -927,25 +927,11 @@
               <button class="btn btn-sub btn-sm" onclick="copyText('previewSubject')">件名のみ</button>
               <button class="btn btn-sub btn-sm" onclick="copyText('previewBody', true)">本文のみ</button>
               <button class="btn btn-sm" onclick="copyMail()">件名＋本文</button>
+              <button class="btn btn-sm" id="btnCreateSubMemberDraft" onclick="createSubMemberDraft()" style="background:#0a8043;color:#fff;border-color:#0a8043;" title="完成URLのQRコード入りPDFを生成し、管理者会員宛てのGmail下書きを自動作成します（初回はGoogleの権限許可ダイアログが出ます）">📎 PDF＋Gmail下書き作成</button>
             </div>
           </div>
           <div class="mail-subject" id="previewSubject">（件名）</div>
           <div class="mail-body" id="previewBody">（本文）</div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">デジタル会員向け案内PDF ＋ Gmail下書き</div>
-          <p class="hint" style="margin:6px 0 12px;">
-            完成URLを記載したQRコード入りのPDFを生成し、管理者会員（契約者）宛てのGmail下書きを自動作成します。Gmailの「下書き」フォルダで内容を確認のうえ送信してください。
-          </p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <button class="btn-next" id="btnCreateSubMemberDraft" onclick="createSubMemberDraft()" style="padding:10px 22px;">デジタル会員向け案内PDF ＋ Gmail下書きを作成</button>
-            <a class="btn btn-sub btn-sm" href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noopener" style="text-decoration:none;">Gmailの下書きを開く ↗</a>
-          </div>
-          <div class="hint" style="margin-top:10px;font-size:11px;">
-            ※ 完成URLが生成済み・メールアドレス入力済みのときに動作します。<br>
-            ※ 初回利用時はGoogleの追加権限許可ダイアログが出ます（Gmailで下書きを作成するため）。
-          </div>
         </section>
 
       </div>
@@ -1120,7 +1106,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519p', date:'2026-05-19', note:'呼称をメイン会員→管理者会員（購読のお申込者）、サブ会員→デジタル会員に変更。PDF本文・フッター・UIパネル名・ボタン名に反映。'};
+  const APP_BUILD = {version:'rev.0519q', date:'2026-05-19', note:'PDF生成の見栄え修正：①背景色が出ない問題を print-color-adjust:exact で修正、②2ページに溢れていたためレイアウトをコンパクト化し1ページ収納に。あわせて、PDF＋Gmail下書き作成ボタンを案内メールパネルのコピーボタン横（最右）に移動、押下後の確認ダイアログ＋履歴へのsent記録を追加。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1289,40 +1275,40 @@
     const e = function(s){ return escapeHtml(s); };
     return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>アカウント登録のご案内</title>
 <style>
-*{box-sizing:border-box;}
-body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;color:#23303a;}
-.page{width:210mm;min-height:297mm;background:#fff;}
-.pg-head{background:#1d3f5e;color:#fff;padding:24px 24mm 22px;}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;color:#23303a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.page{width:210mm;background:#fff;}
+.pg-head{background:#1d3f5e;color:#fff;padding:16px 22mm 14px;}
 .kicker{font-size:11px;letter-spacing:.22em;opacity:.85;}
-.pg-head h1{margin:8px 0 0;font-size:25px;font-weight:700;}
-.pg-head .lead{margin-top:6px;font-size:12.5px;opacity:.9;line-height:1.7;}
-.pg-body{padding:22px 24mm 0;}
-.intro{font-size:13px;line-height:1.95;margin:0 0 18px;}
-.cta{border:1.5px solid #2a7fa8;border-radius:12px;background:#eef4f8;padding:20px 24px;margin:0 0 12px;}
-.cta-row{display:flex;gap:22px;align-items:center;}
+.pg-head h1{margin:6px 0 0;font-size:22px;font-weight:700;}
+.pg-head .lead{margin-top:4px;font-size:12px;opacity:.9;line-height:1.6;}
+.pg-body{padding:14px 22mm 0;}
+.intro{font-size:12.5px;line-height:1.85;margin:0 0 10px;}
+.cta{border:1.5px solid #2a7fa8;border-radius:10px;background:#eef4f8;padding:14px 18px;margin:0 0 6px;}
+.cta-row{display:flex;gap:18px;align-items:center;}
 .cta-left{flex:1;}
-.cta-t{font-size:13px;font-weight:700;color:#1d3f5e;margin:0 0 12px;}
-.btn-reg{display:inline-block;text-decoration:none;background:#2a7fa8;color:#fff;font-weight:700;font-size:16px;padding:14px 32px;border-radius:9px;}
-.cta-qr{text-align:center;flex:0 0 auto;border-left:1px dashed #b9cdd9;padding-left:22px;}
-.cta-qr img{width:124px;height:124px;display:block;border:1px solid #d9e0e7;background:#fff;}
-.qr-cap{font-size:11px;color:#6b7785;margin-top:7px;line-height:1.5;}
-.url-fb{font-size:11px;color:#6b7785;margin:0 0 6px;line-height:1.7;}
-.url-box{background:#f4f7fa;border:1px solid #d9e0e7;border-radius:6px;padding:9px 12px;margin:0 0 22px;font-family:"Consolas","Menlo",monospace;font-size:10.5px;color:#2a7fa8;word-break:break-all;line-height:1.55;}
-.sec-h{font-size:14px;font-weight:700;color:#1d3f5e;border-bottom:2px solid #1d3f5e;padding-bottom:6px;margin:20px 0 12px;}
-.sec-h .ic{display:inline-block;background:#1d3f5e;color:#fff;font-size:11px;border-radius:4px;padding:2px 9px;margin-right:8px;}
+.cta-t{font-size:12.5px;font-weight:700;color:#1d3f5e;margin:0 0 8px;}
+.btn-reg{display:inline-block;text-decoration:none;background:#2a7fa8;color:#fff;font-weight:700;font-size:15px;padding:11px 26px;border-radius:8px;}
+.cta-qr{text-align:center;flex:0 0 auto;border-left:1px dashed #b9cdd9;padding-left:18px;}
+.cta-qr img{width:108px;height:108px;display:block;border:1px solid #d9e0e7;background:#fff;}
+.qr-cap{font-size:10.5px;color:#6b7785;margin-top:5px;line-height:1.4;}
+.url-fb{font-size:10.5px;color:#6b7785;margin:0 0 4px;line-height:1.6;}
+.url-box{background:#f4f7fa;border:1px solid #d9e0e7;border-radius:5px;padding:7px 10px;margin:0 0 12px;font-family:"Consolas","Menlo",monospace;font-size:10px;color:#2a7fa8;word-break:break-all;line-height:1.5;}
+.sec-h{font-size:13.5px;font-weight:700;color:#1d3f5e;border-bottom:2px solid #1d3f5e;padding-bottom:4px;margin:12px 0 8px;}
+.sec-h .ic{display:inline-block;background:#1d3f5e;color:#fff;font-size:10.5px;border-radius:4px;padding:2px 8px;margin-right:7px;}
 .steps{margin:0;padding:0;list-style:none;}
-.step{display:flex;gap:14px;padding:12px 0;border-bottom:1px dashed #d9e0e7;}
+.step{display:flex;gap:12px;padding:7px 0;border-bottom:1px dashed #d9e0e7;}
 .step:last-child{border-bottom:none;}
-.step .no{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#1d3f5e;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
-.sb{flex:1;font-size:12.5px;line-height:1.75;}
-.st{display:block;font-weight:700;font-size:13.5px;color:#23303a;margin-bottom:3px;}
+.step .no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#1d3f5e;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.sb{flex:1;font-size:12px;line-height:1.65;}
+.st{display:block;font-weight:700;font-size:13px;color:#23303a;margin-bottom:2px;}
 .sd{display:block;color:#6b7785;}
-.after{font-size:12.5px;line-height:1.9;margin:12px 0 0;}
-.notes{background:#fdf3f3;border:1px solid #f0cccc;border-radius:9px;padding:14px 18px;margin:14px 0 0;}
+.after{font-size:12px;line-height:1.8;margin:8px 0 0;}
+.notes{background:#fdf3f3;border:1px solid #f0cccc;border-radius:8px;padding:10px 14px;margin:10px 0 0;}
 .notes ul{margin:0;padding-left:18px;}
-.notes li{font-size:12px;line-height:1.9;margin:4px 0;}
-.pg-foot{margin-top:24px;background:#15314a;color:#fff;padding:16px 24mm;font-size:11px;line-height:1.85;}
-.pg-foot .ttl{font-weight:700;font-size:12px;margin-bottom:2px;}
+.notes li{font-size:11.5px;line-height:1.8;margin:3px 0;}
+.pg-foot{margin-top:14px;background:#15314a;color:#fff;padding:12px 22mm;font-size:10.5px;line-height:1.75;}
+.pg-foot .ttl{font-weight:700;font-size:11.5px;margin-bottom:2px;}
 .pg-foot a{color:#9fd0e6;}
 @page{size:A4;margin:0;}
 </style></head><body>
@@ -1397,7 +1383,9 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
         pdfFilename: pdfFilename
       }
     });
-    toast('Gmail下書きを作成しています。数秒後にGmailの「下書き」フォルダをご確認ください。');
+    if(confirm('Gmail下書きを作成しました。\n（数秒後にGmailの「下書き」フォルダに反映されます）\n\nこの履歴を「送信済み」としてマークしますか？')){
+      saveRecord('sent');
+    }
   }
   function recordBuildIfNew_(changelog){
     if(!Array.isArray(changelog)) return;
