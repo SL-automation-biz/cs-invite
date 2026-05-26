@@ -1106,7 +1106,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519s', date:'2026-05-19', note:'案内メールの新文面を反映（管理者会員／デジタル会員呼称・PDFガイドへの誘導・人数説明の刷新）。プレースホルダ {{total_invites}}（管理者1名＋デジタル会員可能人数の合計）を追加。新文面の反映にはGAS再デプロイと「初期値に戻す」が必要。'};
+  const APP_BUILD = {version:'rev.0519t', date:'2026-05-19', note:'PDFファイル名を「CSデジタル版_デジタル会員様向け登録のご案内（管理者会員 ◯◯様用）.pdf」に変更。デジタル会員が転送で受け取った際に「自分向けのPDF」と認識しやすく、かつ括弧書きの名前が管理者会員のものだと明示。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1372,8 +1372,8 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     try{ qrPng = generateQrPngDataUrl(BUILT_URL); }
     catch(e){ toast('QRコードの生成に失敗しました：' + e.message, true); return; }
     const pdfHtml = buildSubMemberPdfHtml_({ final_url: BUILT_URL, qrPng: qrPng });
-    const safeName = (d.name||'契約者').replace(/[\\\/:\*\?"<>\|]/g,'_');
-    const pdfFilename = 'CSデジタル版_アカウント登録のご案内_' + safeName + '様.pdf';
+    const safeName = (d.name||'管理者会員').replace(/[\\\/:\*\?"<>\|]/g,'_');
+    const pdfFilename = 'CSデジタル版_デジタル会員様向け登録のご案内（管理者会員 ' + safeName + '様用）.pdf';
     pushTo_({
       createDraft: {
         to: d.email,
