@@ -968,7 +968,7 @@
     <div class="modal-section">
       <h4>CSVインポート</h4>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">
-        ヘッダ：氏名,会社,メール（順不同可。「氏名」「メール」必須）
+        ヘッダ：氏名,会社,メール,ライセンス（順不同可。「氏名」「メール」必須、「ライセンス」は任意）
       </div>
       <input type="file" id="memberCsvFile" accept=".csv" onchange="importMembersCSV(event)" style="font-size:12px;">
     </div>
@@ -979,8 +979,12 @@
         <div class="field"><label>会社</label><input id="newMemberCompany" placeholder="会社"></div>
         <div class="field"><label>メール</label><input id="newMemberEmail" placeholder="email"></div>
       </div>
-      <div style="text-align:right;margin-top:6px;">
-        <button class="btn btn-sm" onclick="addMember()">追加</button>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;gap:10px;">
+        <div class="field" style="max-width:160px;flex:0 0 auto;">
+          <label>ライセンス数<span style="color:var(--muted);font-weight:400;">（任意）</span></label>
+          <input id="newMemberLicense" placeholder="例: 4" type="number" min="1">
+        </div>
+        <button class="btn btn-sm" onclick="addMember()" style="margin-bottom:1px;">追加</button>
       </div>
     </div>
     <div class="modal-section">
@@ -1106,7 +1110,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519u', date:'2026-05-19', note:'PDFファイル名で会社名を優先（管理者名より会社名のほうがデジタル会員にとって識別しやすいため）。会社名あり→「（◯◯ ご契約分）」／会社名なし→「（管理者会員 ◯◯様用）」にフォールバック。'};
+  const APP_BUILD = {version:'rev.0519v', date:'2026-05-19', note:'会員DBに license（購入ライセンス数）カラムを追加。①手動追加フォームに入力欄、②会員一覧にインライン編集列、③CSV取込/書き出し対応、④会員選択時に登録可能人数を自動入力、を実装。GAS の MEMBER_COLS も更新（再デプロイが必要）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1984,14 +1988,23 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
       id: uid(),
       name,
       company: document.getElementById('newMemberCompany').value.trim(),
-      email
+      email,
+      license: document.getElementById('newMemberLicense').value.trim()
     });
     commitMembers(members);
     document.getElementById('newMemberName').value = '';
     document.getElementById('newMemberEmail').value = '';
     document.getElementById('newMemberCompany').value = '';
+    document.getElementById('newMemberLicense').value = '';
     renderMembers();
     toast('追加しました');
+  }
+  function updateMemberLicense(id, value){
+    const members = loadMembers();
+    const m = members.find(x => x.id === id);
+    if(!m) return;
+    m.license = String(value||'').trim();
+    commitMembers(members);
   }
   function deleteMember(id){
     if(!confirm('会員を削除しますか？')) return;
@@ -2004,6 +2017,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     document.getElementById('name').value = m.name || '';
     document.getElementById('company').value = m.company || '';
     document.getElementById('email').value = m.email || '';
+    if(m.license) document.getElementById('availableInvites').value = m.license;
     onFormInput();
     closeMemberDB();
     switchScreen('work');
@@ -2047,6 +2061,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     document.getElementById('name').value = m.name || '';
     document.getElementById('company').value = m.company || '';
     document.getElementById('email').value = m.email || '';
+    if(m.license) document.getElementById('availableInvites').value = m.license;
     onFormInput();
     toast('フォームに反映しました：' + (m.name||''));
   }
@@ -2069,7 +2084,13 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
       return;
     }
     let html = `<table>
-      <thead><tr><th style="width:120px;">氏名</th><th style="width:160px;">会社</th><th>メール</th><th style="width:140px;">操作</th></tr></thead>
+      <thead><tr>
+        <th style="width:110px;">氏名</th>
+        <th style="width:140px;">会社</th>
+        <th>メール</th>
+        <th style="width:78px;">ライセンス</th>
+        <th style="width:130px;">操作</th>
+      </tr></thead>
       <tbody>`;
     filtered.forEach(m => {
       const isIssued = issued.has((m.email||'').toLowerCase());
@@ -2077,6 +2098,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
         <td class="text-left">${escapeHtml(m.name)}${isIssued?' <span class="member-pick-badge">発行済</span>':''}</td>
         <td class="text-left">${escapeHtml(m.company||'')}</td>
         <td class="text-left" style="font-size:11px;">${escapeHtml(m.email)}</td>
+        <td><input type="number" min="1" value="${escapeHtml(m.license||'')}" onchange="updateMemberLicense('${m.id}', this.value)" style="width:100%;box-sizing:border-box;padding:3px 4px;border:1px solid var(--border);border-radius:3px;font-size:11px;text-align:center;font-family:inherit;" placeholder="—"></td>
         <td>
           <div class="row-actions">
             <button onclick="selectMember('${m.id}')">選択</button>
@@ -2102,7 +2124,8 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
         const idx = {
           name: headers.findIndex(h => /氏名|名前|name/i.test(h)),
           company: headers.findIndex(h => /会社|所属|company/i.test(h)),
-          email: headers.findIndex(h => /メール|mail|email/i.test(h))
+          email: headers.findIndex(h => /メール|mail|email/i.test(h)),
+          license: headers.findIndex(h => /ライセンス|license|登録可能|人数/i.test(h))
         };
         if(idx.name < 0 || idx.email < 0) throw new Error('「氏名」「メール」のヘッダが必要です');
         const existing = loadMembers();
@@ -2117,7 +2140,8 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
             id: uid(),
             name,
             company: idx.company >= 0 ? (cells[idx.company]||'').trim() : '',
-            email
+            email,
+            license: idx.license >= 0 ? (cells[idx.license]||'').trim() : ''
           });
           added++;
         }
@@ -2151,7 +2175,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   function exportMembersCSV(){
     const members = loadMembers();
     if(!members.length){toast('会員データがありません', true); return;}
-    const rows = [['氏名','会社','メール'], ...members.map(m => [m.name,m.company,m.email])];
+    const rows = [['氏名','会社','メール','ライセンス'], ...members.map(m => [m.name,m.company,m.email,m.license||''])];
     const csv = rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
     const blob = new Blob(['﻿'+csv], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
