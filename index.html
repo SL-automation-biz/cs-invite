@@ -776,6 +776,116 @@
     .form-actions{justify-content:stretch;}
     .form-actions button{flex:1;}
   }
+/* ========================================================================
+   会員分析タブ embed CSS（元 analysis.html v5.4 / 2026-06-08）
+   #ana-root スコープ：CSS変数を追加し、analysis 由来のスタイルを限定適用
+   ======================================================================== */
+#ana-root{
+  --ana-ink:#1f2733; --ana-sub:#5b6675; --ana-line:#dfe4ea;
+  --ana-brand:#1f6f78; --ana-brandbg:#e6f1f2;
+  --ana-bad:#c0392b; --ana-badbg:#fdecea;
+  --ana-warn:#b9770e; --ana-warnbg:#fdf3e2;
+  --ana-good:#1f8a5a; --ana-teal:#138a86; --ana-mark:#fff6c2;
+  font-family:"BIZ UDPGothic","BIZ UDP Gothic","Yu Gothic UI","Meiryo",sans-serif;
+  color:var(--ana-ink); font-size:12px; line-height:1.5;
+}
+#screen-analysis{height:calc(100vh - 110px);overflow-y:auto;overflow-x:hidden;background:#f4f6f9;position:relative;padding:0}
+#ana-root *{box-sizing:border-box}
+#ana-root .wrap{max-width:none;margin:0;padding:8px 12px 40px}
+#ana-root h1{font-size:16px;margin:0 0 2px}
+#ana-root .sub{color:var(--ana-sub);font-size:11px;margin-bottom:8px;line-height:1.5}
+#ana-root code{background:#fff;border:1px solid var(--ana-line);border-radius:4px;padding:1px 5px;font-size:11px;color:var(--ana-bad);font-family:ui-monospace,Consolas,monospace}
+/* 読込状態 */
+#ana-root .load{border:2px dashed #b9c4ce;border-radius:10px;background:#fff;padding:7px 12px;text-align:center;margin-bottom:8px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+#ana-root .load.hot{border-color:var(--ana-brand);background:var(--ana-brandbg)}
+#ana-root .load.ok{border-style:solid;border-color:var(--ana-teal);background:#f0faf8}
+#ana-root .load.err{border-color:var(--ana-bad);background:var(--ana-badbg)}
+#ana-root .load .big{font-size:12.5px;font-weight:700;margin-bottom:0}
+#ana-root .load .hint{color:var(--ana-sub);font-size:11px;display:inline}
+#ana-root #srcname{font-weight:700;color:var(--ana-brand)}
+#ana-root .btn{display:inline-block;background:var(--ana-brand);color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer;margin:0}
+#ana-root .btn:hover{background:#175a62}
+#ana-root .btn-link{background:transparent;color:var(--ana-sub);border:1px solid var(--ana-line);padding:2px 8px;font-size:11px;border-radius:4px;cursor:pointer;font-family:inherit;margin-left:6px}
+#ana-root .btn-link:hover{background:#f0f3f6;color:var(--ana-bad)}
+#ana-root .hide{display:none}
+/* レイアウト：cards 上部 sticky / content 下 */
+#ana-root .sidebar{width:100%;background:#f4f6f9;padding:6px 0 8px;margin-bottom:0;position:sticky;top:0;z-index:50;box-shadow:0 6px 8px -10px rgba(0,0,0,.22)}
+#ana-root .content{width:100%;min-width:0;margin-bottom:0}
+/* カード */
+#ana-root .cards{display:flex;flex-direction:row;flex-wrap:wrap;gap:5px}
+#ana-root .card{flex:1;min-width:108px;background:#fff;border:1px solid var(--ana-line);border-radius:10px;padding:5px 8px;text-align:center;border-top:3px solid #ccc}
+#ana-root .card.c-total{background:var(--ana-brand);border-color:var(--ana-brand);border-top-color:#14545b;flex:1.3}
+#ana-root .card.c-total .l{color:#d4e9ea;font-size:10.5px}
+#ana-root .card.c-total .n{color:#fff !important;font-size:20px}
+#ana-root .card.c-total .note{background:rgba(255,255,255,.16);color:#eaf6f6;font-size:10px;padding:0 4px;display:inline-block;border-radius:3px;margin-top:1px}
+#ana-root .card.c-type{border-top-color:var(--ana-teal);margin-left:0}
+#ana-root .card.c-type .l{font-size:10px;color:var(--ana-sub)}
+#ana-root .card.c-type .n{color:var(--ana-teal);font-size:15px}
+#ana-root .card.clickable{cursor:pointer;transition:.12s}
+#ana-root .card.clickable:hover{box-shadow:0 3px 12px rgba(31,111,120,.22);transform:translateY(-2px)}
+#ana-root .card.active{outline:3px solid var(--ana-brand);outline-offset:-1px}
+#ana-root .card .l{font-size:10.5px;color:var(--ana-sub);line-height:1.25}
+#ana-root .card .n{font-size:16px;font-weight:800;color:var(--ana-brand);line-height:1.05;margin-top:1px}
+#ana-root .card .note{font-size:9.5px;color:#8392a5;margin-top:1px}
+#ana-root .breakdown-label{display:none}
+#ana-root .muted{color:var(--ana-sub);font-size:10.5px;margin-top:6px}
+/* 管理コードタグ */
+#ana-root .codetag{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:10px;font-weight:700;color:#5b6675;background:#eef2f5;border:1px solid var(--ana-line);border-radius:5px;padding:0 4px;margin-right:4px;vertical-align:1px}
+/* 学生証 */
+#ana-root .cert-ok{display:inline-block;background:#e3f3ec;color:#1f8a5a;border:1px solid #bfe2d2;border-radius:10px;padding:1px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+#ana-root .cert-no{display:inline-block;color:#b1245e;font-size:12px;font-weight:700;white-space:nowrap}
+/* セクション・表 */
+#ana-root section{background:#fff;border:1px solid var(--ana-line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+#ana-root section h2{font-size:13.5px;margin:0 0 8px;border-left:4px solid var(--ana-brand);padding-left:8px}
+#ana-root table{border-collapse:collapse;width:100%;font-size:12.5px}
+#ana-root th,#ana-root td{border:1px solid var(--ana-line);padding:4px 7px;vertical-align:middle;text-align:center}
+#ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
+#ana-root td.lft{text-align:left}
+#ana-root section table thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;z-index:40}
+/* ツール3 テーブルラッパー（横スクロール可・縦sticky動作） */
+#ana-root .tw{overflow-x:auto;overflow-y:visible;border:1px solid var(--ana-line);border-radius:8px;background:#fff}
+#ana-root .tw table{white-space:nowrap}
+#ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
+#ana-root .tw thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px;z-index:40}
+#ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px}
+#ana-root .tw td.lft{text-align:left}
+#ana-root .tw th.narrow,#ana-root .tw td.narrow{font-size:11.5px}
+#ana-root .chkcol{width:34px;background:#f3f6f8}
+#ana-root .tw thead th.chkcol{background:#15565e}
+#ana-root .chkcol input{width:16px;height:16px;cursor:pointer}
+#ana-root .tw tbody tr:nth-child(even){background:#fafbfc}
+#ana-root .tw tbody tr:hover{background:#eef6f7}
+#ana-root .tw tbody tr.marked{background:var(--ana-mark) !important}
+#ana-root tr.grp td,#ana-root tr.grp:hover td{background:#e8f0f1;font-weight:700;text-align:left;color:#234;font-size:12.5px}
+#ana-root .gmail{color:var(--ana-brand);font-weight:700}
+#ana-root .gwarn{color:var(--ana-warn);font-weight:600;font-size:12px}
+#ana-root tr.rep td{background:#e3f3f0;border-top:2px solid var(--ana-teal)}
+#ana-root tr.rep:hover td{background:#d6ece7}
+#ana-root .role-rep{background:var(--ana-teal);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
+#ana-root .role-dig{background:#edf0f7;color:#3a4a78;font-size:11px;padding:1px 7px;border-radius:10px;font-weight:700}
+#ana-root .fb{color:var(--ana-bad);font-weight:700;background:var(--ana-badbg);padding:0 6px;border-radius:10px;font-size:11px}
+#ana-root .fw{color:var(--ana-warn);font-weight:700;background:var(--ana-warnbg);padding:0 6px;border-radius:10px;font-size:11px}
+#ana-root .bt{background:#777;color:#fff;font-size:11px;padding:1px 5px;border-radius:4px}
+#ana-root .ev{font-size:11px;padding:0 6px;border-radius:10px;font-weight:700;white-space:nowrap;color:#fff}
+#ana-root .ev-paid{background:#1f8a5a}
+#ana-root .extra{background:#fbfcfd}
+#ana-root .empty{padding:20px;text-align:center;color:var(--ana-sub);font-size:12.5px}
+#ana-root .note{background:var(--ana-brandbg);border-left:3px solid var(--ana-brand);border-radius:0 6px 6px 0;padding:8px 12px;font-size:12px;line-height:1.55;margin-bottom:8px;color:#27424a}
+#ana-root .note code{background:#fff;border:1px solid var(--ana-line);border-radius:4px;padding:1px 5px;font-size:11.5px;color:var(--ana-bad)}
+#ana-root .phead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+#ana-root .act{background:#fff4e0;border:1px solid #f0d199;color:#8a5a08;border-radius:20px;padding:3px 12px;font-weight:700;font-size:12.5px}
+/* 所属グループ タグバッジ */
+#ana-root td .g-tag,#ana-root td.lft .g-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px;margin:1px 2px 1px 0;white-space:nowrap;line-height:1.5;letter-spacing:.01em}
+#ana-root .g-a0{background:#fff4e0;color:#8a5a08;border:1px solid #f0d199}
+#ana-root .g-a1{background:#dcefe9;color:#138a86;border:1px solid #a8d6cf}
+#ana-root .g-a2{background:#dcecfa;color:#1d4e8e;border:1px solid #a9c8e4}
+#ana-root .g-a8{background:#ece2f5;color:#6c3fb5;border:1px solid #ccb4e1}
+#ana-root .g-a9{background:#f4dfe2;color:#9e3a47;border:1px solid #dab8bf}
+#ana-root .g-paid{background:#1f8a5a;color:#fff;border:1px solid #1f8a5a}
+#ana-root .g-year{background:#eef1f5;color:#5b6675;border:1px solid #dde2ea}
+#ana-root .g-view{background:#e3f3ec;color:#1f8a5a;border:1px solid #bfe2d2}
+#ana-root .g-test{background:#777;color:#fff;border:1px solid #777}
+#ana-root #verstamp{position:absolute;right:6px;bottom:5px;z-index:95;background:rgba(31,39,51,.82);color:#fff;font-size:10.5px;line-height:1.3;padding:2px 7px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
@@ -963,7 +1073,29 @@
 
   <!-- ===== 会員分析画面（iframe で analysis.html を読み込み） ===== -->
   <div class="screen" id="screen-analysis">
-    <iframe src="./analysis.html?v=0611h" id="analysisFrame" title="会員分析" style="width:100%;height:calc(100vh - 110px);border:none;background:#f4f6f9;display:block;"></iframe>
+    <div id="ana-root">
+      <div class="wrap">
+        <h1>ワンストリーム 会員登録件数確認ツール</h1>
+        <div class="sub">最新の <code>users</code> CSV を一度読み込めば、次回以降は<b>開くだけで自動表示</b>されます（更新時のみ新しいCSVを読み込み）</div>
+        <div id="load" class="load">
+          <div class="big" id="srcname">CSVを読み込み中…</div>
+          <div class="hint">新しい <b>users〜.csv</b> に更新する場合は、ここにドラッグ＆ドロップ／クリックで選択してください</div>
+          <button class="btn" id="pick">CSVファイルを選択／更新</button>
+          <input type="file" id="file" accept=".csv" class="hide">
+        </div>
+        <div id="result" class="hide">
+          <aside class="sidebar">
+            <div class="cards" id="cards"></div>
+            <div class="muted" style="margin-top:6px">※ メニューをクリックすると、その種別で会員DBが絞り込まれます。</div>
+          </aside>
+          <section id="dbview" class="content">
+            <h2 id="dbtitle">会員DB</h2>
+            <div id="dbbody"></div>
+          </section>
+        </div>
+      </div>
+      <div id="verstamp" title="">版数確認</div>
+    </div>
   </div>
 </main>
 
@@ -1116,7 +1248,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611h', date:'2026-06-11', note:'会員分析タブ：①iframe min-height削除で2重スクロール解消、②sidebar(cards)をsticky復活+影付き、③.tw横スクロール復活、④thead top をsidebar高さに動的同期、⑤A8学生会員に説明文追加。'};
+  const APP_BUILD = {version:'rev.0611i', date:'2026-06-11', note:'会員分析タブを iframe から完全 embed に切替。CSS/HTML/JS を親index.htmlに直接統合（IIFE+ #ana-root スコープ）。これで単一スクロールコンテキスト・cards と thead 両方の sticky・横スクロール全て iframe の制約なく動作。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2393,6 +2525,334 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   switchSubTab('input');
   setStickyOffset();
   pullAll();
+</script>
+
+<!-- ========================================================================
+     会員分析タブ embed JS（元 analysis.html v5.4 / 2026-06-08）
+     IIFE スコープで分離。clearMaster のみ window に公開
+     ======================================================================== -->
+<script>
+(function(){
+"use strict";
+var ANA_VERSION="v5.4", ANA_VERDATE="2026-06-08";
+
+/* ===== CSVパーサ ===== */
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  var rows=[],row=[],field='',i=0,q=false,n=text.length;
+  while(i<n){
+    var c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i+=2;continue;} q=false;i++;continue; }
+      field+=c;i++;continue;
+    }
+    if(c==='"'){q=true;i++;continue;}
+    if(c===','){row.push(field);field='';i++;continue;}
+    if(c==='\r'){i++;continue;}
+    if(c==='\n'){row.push(field);rows.push(row);row=[];field='';i++;continue;}
+    field+=c;i++;
+  }
+  if(field!==''||row.length){row.push(field);rows.push(row);}
+  return rows;
+}
+
+/* ===== データ保持 ===== */
+var RECORDS=[];
+var LS_KEY="onestream_member_csv_v1";
+
+function ingest(text, sourceLabel, csvName, fromCache){
+  var rows=parseCSV(text);
+  if(rows.length<2){ setLoad("CSVにデータ行がありません。","err"); return; }
+  var header=rows[0].map(function(s){return (s||'').trim();});
+  var idxGroup=header.indexOf('所属グループ');
+  var idxName =header.indexOf('名前');
+  var idxJoin =header.indexOf('加入日');
+  if(idxGroup<0||idxJoin<0){ setLoad("想定列（所属グループ／加入日）が見つかりません。","err"); return; }
+
+  var hidx={}; header.forEach(function(c,i){hidx[c]=i;});
+  var data=rows.slice(1).filter(function(r){return r.some(function(c){return c&&c.trim()!=='';});});
+  RAW={header:header,hidx:hidx,data:data};
+
+  RECORDS=rows.slice(1)
+    .filter(function(r){return r.some(function(c){return c&&c.trim()!=='';});})
+    .map(function(r){
+      var g=(r[idxGroup]||'');
+      var nm=(idxName>=0?r[idxName]:'')||'';
+      var tags=g.split(';').map(function(s){return s.trim();}).filter(Boolean);
+      var isTest=g.indexOf('テスト会員')>=0 || /【テスト|【ﾃｽﾄ/.test(nm);
+      return {tags:tags, ym:parseYM(r[idxJoin]||''), isTest:isTest};
+    });
+  setLoad('📌 <b>マスター保存中</b>：'+escapeHtmlSimple(csvName||sourceLabel)+'（全 '+RECORDS.length+' 件）<button class="btn-link" onclick="anaClearMaster()" title="保存されたマスターCSVを削除">マスターをクリア</button>',"ok");
+  render();
+  if(!fromCache) saveCache(text, csvName||"");
+}
+
+function saveCache(text, name){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({text:text, name:name, at:new Date().toISOString()})); }catch(e){}
+}
+function loadCache(){
+  try{ var s=localStorage.getItem(LS_KEY); return s?JSON.parse(s):null; }catch(e){ return null; }
+}
+
+function escapeHtmlSimple(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function parseYM(s){
+  var m=s.match(/(\d{4})年\s*(\d{1,2})月/);
+  if(!m) return "不明";
+  return m[1]+"-"+("0"+m[2]).slice(-2);
+}
+
+var TYPE_DEFS=[
+  {key:"A0", label:'<span class="codetag" title="管理用タグ">管理コード：A0</span> 雑誌定期購読', note:"雑誌購読のみの件数", match:function(t){return t.indexOf("A0")>=0;}},
+  {key:"A1", label:'<span class="codetag" title="管理用タグ">管理コード：A1</span> 管理者会員',   note:"デジタルプランの契約数", match:function(t){return t.indexOf("A1管理者")>=0;}},
+  {key:"A2", label:'<span class="codetag" title="管理用タグ">管理コード：A2</span> デジタル会員', note:"管理者会員から招待されて登録した会員の数", match:function(t){return t.indexOf("A2デジタル")>=0;}},
+  {key:"A8", label:'<span class="codetag" title="管理用タグ">管理コード：A8</span> 学生会員',     note:"学生プランで登録された会員の数", match:function(t){return t.indexOf("A8学生")>=0;}}
+];
+var FILTER_DEFS={
+  "all":{label:"全会員", match:function(g){return true;}},
+  "A0":{label:"A0 雑誌定期購読", match:function(g){return g.indexOf("A0")>=0;}},
+  "A1":{label:"A1 管理者会員", match:function(g){return g.indexOf("A1管理者")>=0;}},
+  "A2":{label:"A2 デジタル会員", match:function(g){return g.indexOf("A2デジタル")>=0;}},
+  "A8":{label:"A8 学生会員", match:function(g){return g.indexOf("A8学生")>=0;}}
+};
+
+function render(){
+  var recs=RECORDS.filter(function(r){return !r.isTest;});
+  var rootDoc=document.getElementById("ana-root");
+  if(!rootDoc) return;
+  document.getElementById("result").classList.remove("hide");
+  var total=recs.length;
+  var typeCards=TYPE_DEFS.map(function(d){
+    var c=recs.filter(function(r){return r.tags.some(d.match);}).length;
+    return cardHTML("c-type",d.label,c,d.note||"","",d.key);
+  }).join("");
+  document.getElementById("cards").innerHTML=
+    cardHTML("c-total","登録総件数",total,"テスト除く","","all")+typeCards;
+  renderDB(currentFilter||"all");
+}
+
+function cardHTML(cls,label,num,note,numColor,filterKey){
+  var st=numColor?' style="color:'+numColor+'"':'';
+  var fk=filterKey?(' data-filter="'+filterKey+'"'):'';
+  var clk=filterKey?' clickable':'';
+  return '<div class="card '+cls+clk+'"'+fk+'><div class="l">'+label+'</div><div class="n"'+st+'>'+num+'</div><div class="note">'+note+'</div></div>';
+}
+function setLoad(msg,kind){
+  var el=document.getElementById("load");
+  document.getElementById("srcname").innerHTML=msg;
+  el.className="load"+(kind?" "+kind:"");
+}
+function clearMaster(){
+  if(!confirm('保存されたマスターCSVを削除します。次回からCSVのドラッグ＆ドロップが必要になります。よろしいですか？')) return;
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  location.reload();
+}
+window.anaClearMaster = clearMaster;
+
+/* sidebar の実高さを測って、テーブル thead の sticky top を動的に同期 */
+function syncStickyTop(){
+  var sb=document.querySelector('#ana-root .sidebar');
+  if(!sb) return;
+  var h=sb.offsetHeight;
+  if(!h) return;
+  var s=document.getElementById('anaStickyTopRule');
+  if(!s){s=document.createElement('style');s.id='anaStickyTopRule';document.head.appendChild(s);}
+  s.textContent='#ana-root section table thead th,#ana-root .tw thead th{top:'+h+'px !important}';
+}
+window.addEventListener('load', syncStickyTop);
+window.addEventListener('resize', syncStickyTop);
+
+/* ===== 自動読込 ===== */
+async function autoLoad(){
+  var cache=loadCache();
+  if(cache && cache.text){
+    var when=cache.at?new Date(cache.at).toLocaleString('ja-JP'):'';
+    ingest(cache.text, "自動読込（前回データ）: "+(cache.name||"")+(when?" / "+when+" 取込":""), cache.name, true);
+    return;
+  }
+  setLoad("最新の users CSV をここにドラッグ＆ドロップ（またはクリックして選択）してください。次回以降は自動で読み込まれます。","err");
+}
+
+/* ===== ドラッグ&ドロップ / 選択 ===== */
+function initDropZone(){
+  var load=document.getElementById("load"), fileInput=document.getElementById("file");
+  if(!load||!fileInput) return;
+  document.getElementById("pick").addEventListener("click",function(){fileInput.click();});
+  fileInput.addEventListener("change",function(e){ if(e.target.files[0]) readFile(e.target.files[0]); });
+  ["dragenter","dragover"].forEach(function(ev){load.addEventListener(ev,function(e){e.preventDefault();load.classList.add("hot");});});
+  ["dragleave","drop"].forEach(function(ev){load.addEventListener(ev,function(e){e.preventDefault();load.classList.remove("hot");});});
+  load.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readFile(f); });
+}
+function readFile(f){ var r=new FileReader(); r.onload=function(){ingest(r.result,"読込: "+f.name,f.name);}; r.readAsText(f,"UTF-8"); }
+
+/* ===== ツール3 / 会員DB ===== */
+var RAW=null;
+var DROP_COLS=['FullID','加入日','有効期限','大学卒業予定年','ParentMail','初回送付日','紹介者','IPAddress','本誌購読冊数','備考','お知らせ通知'];
+var LEFT=['メールアドレス','所属グループ','Stripe 顧客ID','所属企業・大学・組織名','所属２（部署・学科など）','住所'];
+var WIDE=['メールアドレス','所属グループ','所属企業・大学・組織名','住所'];
+var NARROW=['No','無効化済み','メール認証済み','郵便番号','電話番号','役職'];
+
+function cell(r,name){var i=RAW.hidx[name]; return i==null?'':((r[i]||'').trim());}
+function isTestRow(r){return cell(r,'所属グループ').indexOf('テスト会員')>=0 || /【テスト|【ﾃｽﾄ/.test(cell(r,'名前'));}
+function f6(r){return cell(r,'所属グループ').indexOf('デジタル会員')>=0;}
+function t6parentReady(r){
+  if(cell(r,'所属グループ').indexOf('A1管理者会員')<0)return false;
+  if(cell(r,'Stripe 顧客ID')==='')return false;
+  var pm=cell(r,'ParentMail'); return pm!=='' && pm.toLowerCase()===cell(r,'メールアドレス').toLowerCase();}
+function parentOf(pm){ if(!pm)return null; var t=pm.toLowerCase();
+  for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス').toLowerCase()===t) return RAW.data[i]; } return null; }
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
+function colcls(c){var a=[]; if(LEFT.indexOf(c)>=0)a.push('lft'); if(WIDE.indexOf(c)>=0)a.push('wide'); else if(NARROW.indexOf(c)>=0)a.push('narrow'); return a.join(' ');}
+function groupTagsHTML(v){
+  var tags=String(v||'').split(';').map(function(s){return s.trim();}).filter(Boolean);
+  return tags.map(function(t){
+    var cls='g-tag';
+    if(t.indexOf('A0')===0) cls+=' g-a0';
+    else if(t.indexOf('A1')===0) cls+=' g-a1';
+    else if(t.indexOf('A2')===0) cls+=' g-a2';
+    else if(t.indexOf('A8')===0) cls+=' g-a8';
+    else if(t.indexOf('A9')===0) cls+=' g-a9';
+    else if(t.indexOf('Y')===0 && t.indexOf('入金済')>=0) cls+=' g-paid';
+    else if(t.indexOf('Y')===0) cls+=' g-year';
+    else if(t.indexOf('【閲覧可】')===0) cls+=' g-view';
+    else if(t.indexOf('テスト')>=0) cls+=' g-test';
+    return '<span class="'+cls+'">'+esc(t)+'</span>';
+  }).join('');
+}
+function tdCell(r,c){
+  var v=cell(r,c), inner=esc(v);
+  if(c==='メール認証済み'&&v==='') inner='<span class="fb">未認証</span>';
+  else if(c==='Stripe 顧客ID'&&v==='') inner='<span class="fw">なし</span>';
+  else if(c==='無効化済み'&&v!=='') inner='<span class="fb">'+esc(v)+'</span>';
+  else if(c==='名前'&&/【テスト|【ﾃｽﾄ/.test(v)) inner=esc(v)+' <span class="bt">TEST</span>';
+  else if(c==='所属グループ'&&v) inner=groupTagsHTML(v);
+  return '<td class="'+colcls(c)+'">'+inner+'</td>';
+}
+function renderGrouped(records,KEEP,parents){
+  parents=parents||[];
+  if(!records.length && !parents.length) return '<p class="empty">デジタル会員（A2デジタル会員）はいません</p>';
+  var groups={},order=[];
+  records.forEach(function(r){
+    var pmRaw=cell(r,'ParentMail'), key=pmRaw.toLowerCase();
+    if(!(key in groups)){groups[key]={pm:pmRaw,rows:[]};order.push(key);}
+    groups[key].rows.push(r);
+  });
+  parents.forEach(function(r){
+    var key=cell(r,'メールアドレス').toLowerCase();
+    if(key && !(key in groups)){groups[key]={pm:cell(r,'メールアドレス'),rows:[]};order.push(key);}
+  });
+  function grpPaid(key){var p=parentOf(key); if(p&&cell(p,'所属グループ').indexOf('Y26入金済')>=0)return 1; var rs=groups[key].rows; for(var i=0;i<rs.length;i++){if(cell(rs[i],'所属グループ').indexOf('Y26入金済')>=0)return 1;} return 0;}
+  order.sort(function(a,b){
+    var ha=groups[a].rows.length>0?0:1, hb=groups[b].rows.length>0?0:1; if(ha!==hb)return ha-hb;
+    var ta=grpPaid(a),tb=grpPaid(b); if(ta!==tb)return tb-ta;
+    var pa=parentOf(a),pb=parentOf(b);
+    var na=pa?cell(pa,'名前'):('￿'+a), nb=pb?cell(pb,'名前'):('￿'+b); return na.localeCompare(nb,'ja');});
+  var colspan=KEEP.length+2;
+  var th='<tr><th class="chkcol">✓</th>';
+  KEEP.forEach(function(c,i){ th+='<th class="'+colcls(c)+'">'+esc(c)+'</th>';
+    if(i===0) th+='<th class="extra">区分</th>'; });
+  th+='</tr>';
+  function row(r,extraHtml,cls){
+    var tds='<td class="chkcol"><input type="checkbox" class="rk"></td>';
+    KEEP.forEach(function(c,i){ tds+=tdCell(r,c); if(i===0) tds+='<td class="extra">'+extraHtml+'</td>'; });
+    return '<tr class="'+(cls||'')+'">'+tds+'</tr>';
+  }
+  var body='';
+  order.forEach(function(key){
+    var grp=groups[key], par=parentOf(key), n=grp.rows.length;
+    if(par) body+=row(par,'<span class="role-rep">👑 代表（配下'+n+'名）</span>'+(cell(par,'所属グループ').indexOf('Y26入金済')>=0?' <span class="ev ev-paid">Y26入金済■</span>':'')+(n===0?' <span class="role-dig" style="background:#eee;color:#888">デジタル枠・今後追加見込み</span>':''),'rep');
+    else body+='<tr class="grp"><td colspan="'+colspan+'">👤 管理者会員 <span class="gmail">'+esc(grp.pm||'(ParentMail空欄)')+'</span> <span class="gwarn">※会員一覧に未登録</span> — 配下デジタル会員 '+n+'名</td></tr>';
+    grp.rows.slice().sort(function(a,b){var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);})
+      .forEach(function(r){ body+=row(r,'<span class="role-dig">デジ</span> <span class="gmail" style="font-weight:400">↑'+esc(cell(r,'ParentMail'))+'</span>'); });
+  });
+  return '<div class="tw"><table><thead>'+th+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+
+var currentFilter="all";
+function renderDB(filterKey){
+  if(!RAW){return;}
+  currentFilter=filterKey||"all";
+  var def=FILTER_DEFS[currentFilter]||FILTER_DEFS["all"];
+  var COMPANY='所属企業・大学・組織名';
+  var dbtitle=document.getElementById("dbtitle");
+  var dbbody=document.getElementById("dbbody");
+  var ne=RAW.data.filter(function(r){return !isTestRow(r);});
+
+  if(currentFilter==="A2"){
+    var L6=ne.filter(f6), L6p=ne.filter(t6parentReady);
+    var KEEPg=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+    dbtitle.textContent="会員DB ─ A2 デジタル会員：親子関係（"+L6.length+"件）";
+    var noteG='<div class="note" style="margin-bottom:10px"><span class="role-rep">👑 親（管理者）</span> の行の下に、その人が招待した <span class="role-dig">デジ</span>（A2デジタル会員）がぶら下がります。「↑メール」は紐づく親のメールです。</div>';
+    dbbody.innerHTML=noteG+renderGrouped(L6,KEEPg,L6p);
+    markActive(); syncStickyTop(); return;
+  }
+
+  if(currentFilter==="A8"){
+    var KEEP8=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+    var rows8=ne.filter(function(r){return cell(r,'所属グループ').indexOf('A8学生')>=0;})
+      .sort(function(a,b){var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);});
+    dbtitle.textContent="会員DB ─ A8 学生会員（"+rows8.length+"件）";
+    var th8='<tr>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var body8=rows8.map(function(r,idx){
+      return '<tr>'+KEEP8.map(function(c){
+        if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
+        return tdCell(r,c);
+      }).join('')+'</tr>';
+    }).join('');
+    dbbody.innerHTML=(rows8.length?'<div class="tw"><table><thead>'+th8+'</thead><tbody>'+body8+'</tbody></table></div>':'<p class="empty">該当する会員はいません</p>');
+    markActive(); syncStickyTop(); return;
+  }
+
+  var KEEP=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+  if(currentFilter==="A1" && KEEP.indexOf(COMPANY)>=0){
+    KEEP=[COMPANY].concat(KEEP.filter(function(c){return c!==COMPANY;}));
+  }
+  var rows=ne.filter(function(r){return def.match(cell(r,'所属グループ'));})
+    .sort(function(a,b){
+      if(currentFilter==="A1"){ var ca=cell(a,COMPANY),cb=cell(b,COMPANY); var cc=ca.localeCompare(cb,'ja'); if(cc!==0)return cc; }
+      var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);
+    });
+
+  dbtitle.textContent="会員DB ─ "+def.label+"（"+rows.length+"件）";
+  var tbl;
+  if(!rows.length){ tbl='<p class="empty">該当する会員はいません</p>'; }
+  else{
+    var th='<tr>'+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var body=rows.map(function(r,idx){return '<tr>'+KEEP.map(function(c){
+      if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
+      return tdCell(r,c);
+    }).join('')+'</tr>';}).join('');
+    tbl='<div class="tw"><table><thead>'+th+'</thead><tbody>'+body+'</tbody></table></div>';
+  }
+  dbbody.innerHTML=tbl;
+  markActive();
+  syncStickyTop();
+}
+function markActive(){
+  document.querySelectorAll('#cards .card').forEach(function(c){
+    c.classList.toggle('active', c.getAttribute('data-filter')===currentFilter);
+  });
+}
+
+/* 初期化 */
+function initAnalysis(){
+  initDropZone();
+  document.getElementById("cards").addEventListener("click",function(e){
+    var card=e.target.closest('.card.clickable'); if(!card)return;
+    var key=card.getAttribute('data-filter'); if(!key)return;
+    renderDB(key);
+    document.getElementById("dbview").scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  /* 版数スタンプ */
+  var vs=document.getElementById("verstamp");
+  if(vs){ vs.textContent=ANA_VERSION+" / "+ANA_VERDATE; vs.title="会員登録件数確認ツール "+ANA_VERSION+"（"+ANA_VERDATE+"）"; }
+  autoLoad();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initAnalysis);
+}else{
+  initAnalysis();
+}
+})();
 </script>
 </body>
 </html>
