@@ -1259,7 +1259,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611x', date:'2026-06-11', note:'会員分析タブに「📥 入金済みA1管理者を発行用会員DBへ取り込み」ボタンを追加。分析CSVから A1管理者×入金済タグの会員を抽出し、発行用会員DBに未登録メールのみ追加（確認ダイアログ→GAS同期）。ライセンス数はCSVにないため空欄で追加。'};
+  const APP_BUILD = {version:'rev.0611y', date:'2026-06-11', note:'会員DB取り込みの確認ダイアログに内訳表示を追加。「A1管理者◯件中、入金済タグあり◯件が対象（未入金◯件は対象外）」を冒頭に表示し、対象件数の根拠が分かるように。全件登録済みの場合も内訳付きでalert表示。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2157,7 +2157,10 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   }
   /* 会員分析タブ（分析CSV）からの一括取り込み。
      候補 = 入金済みのA1管理者会員。既存メール（小文字比較）はスキップ。 */
-  window.csInviteImportMembers = function(cands){
+  window.csInviteImportMembers = function(cands, stats){
+    const breakdown = stats && stats.a1Total!=null
+      ? '【内訳】A1管理者会員 '+stats.a1Total+' 件中、入金済タグあり '+cands.length+' 件が取り込み対象\n（未入金の '+(stats.a1Total-cands.length)+' 件は対象外）\n\n'
+      : '';
     if(!Array.isArray(cands) || !cands.length){
       toast('対象（入金済みのA1管理者会員）が見つかりません', true); return;
     }
@@ -2166,10 +2169,12 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     const fresh = cands.filter(c => c.email && !existing.has(c.email.toLowerCase()));
     const skip = cands.length - fresh.length;
     if(!fresh.length){
-      toast('追加対象なし：対象 '+cands.length+' 件はすべて会員DBに登録済みです'); return;
+      alert(breakdown + '追加対象なし：対象 '+cands.length+' 件はすべて会員DBに登録済みです。');
+      return;
     }
     const names = fresh.slice(0,10).map(c => c.name || c.email).join('、');
-    const msg = '発行用の会員DBへ '+fresh.length+' 件追加します。\n'
+    const msg = breakdown
+      + '発行用の会員DBへ '+fresh.length+' 件追加します。\n'
       + (skip ? '（既に登録済みの '+skip+' 件はスキップ）\n' : '')
       + '\n' + names + (fresh.length>10 ? ' ほか' : '')
       + '\n\nよろしいですか？\n※ ライセンス数はCSVにないため空欄です。会員DB画面で入力してください。';
@@ -2926,11 +2931,8 @@ function initAnalysis(){
   var imp=document.getElementById('importToMain');
   if(imp) imp.addEventListener('click', function(){
     if(!RAW){ alert('先に users CSV を読み込んでください。'); return; }
-    var cands=RAW.data.filter(function(r){ return !isTestRow(r); })
-      .filter(function(r){
-        var g=cell(r,'所属グループ');
-        return g.indexOf('A1管理者')>=0 && g.indexOf('入金済')>=0;
-      })
+    var a1=RAW.data.filter(function(r){ return !isTestRow(r) && cell(r,'所属グループ').indexOf('A1管理者')>=0; });
+    var cands=a1.filter(function(r){ return cell(r,'所属グループ').indexOf('入金済')>=0; })
       .map(function(r){
         return {
           name: cell(r,'名前'),
@@ -2939,7 +2941,7 @@ function initAnalysis(){
         };
       })
       .filter(function(c){ return c.email; });
-    if(typeof window.csInviteImportMembers==='function') window.csInviteImportMembers(cands);
+    if(typeof window.csInviteImportMembers==='function') window.csInviteImportMembers(cands, {a1Total:a1.length});
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
