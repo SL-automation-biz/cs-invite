@@ -857,6 +857,12 @@
 #ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:#fff;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
+/* 発行用DB 状態列（A1ビュー）：追加済バッジ／＋DB追加ボタン／入金待ち */
+#ana-root .dbst{white-space:nowrap}
+#ana-root .dbst-ok{color:#1f8a5a;font-weight:700;font-size:11.5px;white-space:nowrap}
+#ana-root .dbst-wait{color:#8392a5;font-size:11.5px;white-space:nowrap}
+#ana-root .dbst-add{background:var(--ana-brand);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;white-space:nowrap;font-family:inherit}
+#ana-root .dbst-add:hover{background:#175a62}
 /* wide列はメールアドレス等の連続英数字も折り返せるよう overflow-wrap を指定（はみ出し防止） */
 #ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px;overflow-wrap:anywhere;word-break:break-word}
 #ana-root .tw td.lft{text-align:left}
@@ -1259,7 +1265,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611y', date:'2026-06-11', note:'会員DB取り込みの確認ダイアログに内訳表示を追加。「A1管理者◯件中、入金済タグあり◯件が対象（未入金◯件は対象外）」を冒頭に表示し、対象件数の根拠が分かるように。全件登録済みの場合も内訳付きでalert表示。'};
+  const APP_BUILD = {version:'rev.0611z', date:'2026-06-11', note:'会員分析タブのA1ビューに「発行用DB」状態列を追加。行ごとに ✓追加済（緑）／＋DB追加ボタン（入金済み未登録→1クリック追加）／入金待ち（グレー）を表示。追加後は行表示が即座に「追加済」へ更新され、GASにも同期。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2155,6 +2161,24 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     renderMembers();
     toast('追加しました');
   }
+  /* 会員分析タブ向け：会員DBの登録済みメール一覧（小文字Set）を返す */
+  window.csInviteMemberEmails = function(){
+    return new Set(loadMembers().map(m => (m.email||'').toLowerCase()).filter(Boolean));
+  };
+  /* 会員分析タブ向け：1件だけ会員DBへ追加（行ごとの「＋ DB追加」ボタン用） */
+  window.csInviteAddOneMember = function(c){
+    if(!c || !c.email){ toast('メールアドレスがありません', true); return false; }
+    const members = loadMembers();
+    if(members.some(m => (m.email||'').toLowerCase() === c.email.toLowerCase())){
+      toast('既に会員DBに登録済みです：'+(c.name||c.email)); return false;
+    }
+    if(!confirm((c.name||c.email)+' さんを発行用の会員DBへ追加しますか？\n※ ライセンス数は空欄で追加されます。')) return false;
+    members.unshift({id:uid(), name:c.name||'', company:c.company||'', email:c.email, license:''});
+    commitMembers(members);
+    renderMembers();
+    toast('会員DBに追加しました：'+(c.name||c.email));
+    return true;
+  };
   /* 会員分析タブ（分析CSV）からの一括取り込み。
      候補 = 入金済みのA1管理者会員。既存メール（小文字比較）はスキップ。 */
   window.csInviteImportMembers = function(cands, stats){
@@ -2897,11 +2921,20 @@ function renderDB(filterKey){
     });
 
   dbtitle.textContent="会員DB ─ "+def.label+"（"+rows.length+"件）";
+  /* A1ビューのみ：先頭に「発行用DB」状態列（追加済／＋DB追加ボタン／入金待ち） */
+  var isA1=(currentFilter==="A1");
+  var dbSet=(isA1 && typeof window.csInviteMemberEmails==='function')?window.csInviteMemberEmails():null;
+  function dbStatusCell(r){
+    var em=cell(r,'メールアドレス');
+    if(cell(r,'所属グループ').indexOf('入金済')<0) return '<td class="dbst"><span class="dbst-wait">入金待ち</span></td>';
+    if(dbSet && em && dbSet.has(em.toLowerCase())) return '<td class="dbst"><span class="dbst-ok">✓ 追加済</span></td>';
+    return '<td class="dbst"><button class="dbst-add" data-email="'+esc(em)+'">＋ DB追加</button></td>';
+  }
   var tbl;
   if(!rows.length){ tbl='<p class="empty">該当する会員はいません</p>'; }
   else{
-    var th='<tr>'+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
-    var body=rows.map(function(r,idx){return '<tr>'+KEEP.map(function(c){
+    var th='<tr>'+(isA1?'<th class="dbst">発行用DB</th>':'')+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var body=rows.map(function(r,idx){return '<tr>'+(isA1?dbStatusCell(r):'')+KEEP.map(function(c){
       if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
       return tdCell(r,c);
     }).join('')+'</tr>';}).join('');
@@ -2942,6 +2975,22 @@ function initAnalysis(){
       })
       .filter(function(c){ return c.email; });
     if(typeof window.csInviteImportMembers==='function') window.csInviteImportMembers(cands, {a1Total:a1.length});
+  });
+  /* A1ビューの行ごと「＋ DB追加」ボタン（イベントデリゲーション） */
+  document.getElementById('dbbody').addEventListener('click', function(e){
+    var btn=e.target.closest('.dbst-add'); if(!btn) return;
+    var em=btn.getAttribute('data-email'); if(!em || !RAW) return;
+    var row=null;
+    for(var i=0;i<RAW.data.length;i++){
+      if(cell(RAW.data[i],'メールアドレス')===em){ row=RAW.data[i]; break; }
+    }
+    if(!row) return;
+    var ok=(typeof window.csInviteAddOneMember==='function') && window.csInviteAddOneMember({
+      name: cell(row,'名前'),
+      email: em,
+      company: cell(row,'所属企業・大学・組織名')
+    });
+    if(ok) renderDB(currentFilter);  /* 行の表示を「✓ 追加済」に更新 */
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
