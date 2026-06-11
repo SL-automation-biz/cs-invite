@@ -853,7 +853,8 @@
    .tw の直前に高さ0の sticky コンテナを置き、その中に thead だけ複製して固定表示する。
    縦の固定は CSS sticky（スクロール遅延ゼロ）、横は .tw のスクロールに JS で同期。 */
 #ana-root .twfh{position:sticky;top:var(--ana-thead-top,176px);height:0;z-index:45}
-#ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:transparent;border-radius:0}
+/* クローン側の枠1pxは透明だと下を通る行の文字が透けるため、背景は白で塗る */
+#ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:#fff;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
 #ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px}
@@ -1257,7 +1258,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611u', date:'2026-06-11', note:'会員分析タブ：見出し（会員DB ─ XXX）もsticky固定に追加。カード → 見出し → テーブルヘッダーの3段固定。見出しはCSS sticky（--ana-title-top）、theadクローンは見出しの実高さを加算した--ana-thead-topに固定。'};
+  const APP_BUILD = {version:'rev.0611v', date:'2026-06-11', note:'会員分析タブ：①theadクローン上端の透け修正（クローン背景を白に・見出し高さを実測小数で取得し1px重ね）。②カードでフィルタ切替時にページ先頭へ自動スクロール。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2671,11 +2672,13 @@ function syncStickyTop(){
   var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
   var sb=document.querySelector('#ana-root .sidebar');
   var line=topbarH+(sb?sb.offsetHeight:0);
-  /* 見出し（h2#dbtitle）はカード直下、thead クローンは見出しの直下に固定 */
+  /* 見出し（h2#dbtitle）はカード直下、thead クローンは見出しの直下に固定。
+     offsetHeight は整数丸めでサブピクセルの隙間が出るため getBoundingClientRect で実測し、
+     さらに 1px 重ねて隙間からの透けを防ぐ */
   document.documentElement.style.setProperty('--ana-title-top', line+'px');
   var h2=document.getElementById('dbtitle');
-  var h2H=(h2 && h2.offsetHeight)?h2.offsetHeight:0;
-  document.documentElement.style.setProperty('--ana-thead-top', (line+h2H)+'px');
+  var h2H=h2?h2.getBoundingClientRect().height:0;
+  document.documentElement.style.setProperty('--ana-thead-top', (line+h2H-1)+'px');
   buildFloatHeads();
 }
 function buildFloatHeads(){
@@ -2889,7 +2892,8 @@ function initAnalysis(){
     var card=e.target.closest('.card.clickable'); if(!card)return;
     var key=card.getAttribute('data-filter'); if(!key)return;
     renderDB(key);
-    /* 自動スクロールはユーザー意図に反するので削除（rev.0611p） */
+    /* フィルタ切替時はページ先頭に戻す（テーブル中腹のままだと位置が分かりにくいため） */
+    window.scrollTo(0,0);
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
