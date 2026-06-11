@@ -837,7 +837,9 @@
 #ana-root .cert-no{display:inline-block;color:#b1245e;font-size:12px;font-weight:700;white-space:nowrap}
 /* セクション・表 */
 #ana-root section{background:#fff;border:1px solid var(--ana-line);border-radius:8px;padding:10px 12px;margin-bottom:12px;overflow:visible}
-#ana-root section h2{font-size:13.5px;margin:0 0 8px;padding-left:8px;border-left:4px solid var(--ana-brand)}
+/* 見出し（会員DB ─ XXX）も sticky 固定：カードの直下に貼り付く。
+   下8pxの隙間は margin ではなく padding+背景白で覆い、下を通る行を隠す */
+#ana-root section h2{font-size:13.5px;margin:0;padding:0 0 8px 8px;border-left:4px solid var(--ana-brand);background:#fff;position:sticky;top:var(--ana-title-top,146px);z-index:48}
 #ana-root table{border-collapse:collapse;width:100%;font-size:12.5px}
 #ana-root th,#ana-root td{border:1px solid var(--ana-line);padding:4px 7px;vertical-align:middle;text-align:center}
 #ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
@@ -1255,7 +1257,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611t', date:'2026-06-11', note:'会員分析タブ：thead固定をフロートヘッダー方式に変更。JS translateY追従はスクロール時に1フレーム遅れて「降りてくる」のが見えるため、theadのクローンをCSS stickyコンテナに入れて遅延ゼロで固定。横スクロールはscrollLeft同期。'};
+  const APP_BUILD = {version:'rev.0611u', date:'2026-06-11', note:'会員分析タブ：見出し（会員DB ─ XXX）もsticky固定に追加。カード → 見出し → テーブルヘッダーの3段固定。見出しはCSS sticky（--ana-title-top）、theadクローンは見出しの実高さを加算した--ana-thead-topに固定。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2669,7 +2671,11 @@ function syncStickyTop(){
   var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
   var sb=document.querySelector('#ana-root .sidebar');
   var line=topbarH+(sb?sb.offsetHeight:0);
-  document.documentElement.style.setProperty('--ana-thead-top', line+'px');
+  /* 見出し（h2#dbtitle）はカード直下、thead クローンは見出しの直下に固定 */
+  document.documentElement.style.setProperty('--ana-title-top', line+'px');
+  var h2=document.getElementById('dbtitle');
+  var h2H=(h2 && h2.offsetHeight)?h2.offsetHeight:0;
+  document.documentElement.style.setProperty('--ana-thead-top', (line+h2H)+'px');
   buildFloatHeads();
 }
 function buildFloatHeads(){
