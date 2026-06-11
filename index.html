@@ -1097,7 +1097,7 @@
         <div id="result" class="hide">
           <aside class="sidebar">
             <div class="cards" id="cards"></div>
-            <div class="muted" style="margin-top:6px">※ メニューをクリックすると、その種別で会員DBが絞り込まれます。</div>
+            <div class="muted" style="margin-top:6px">※ メニューをクリックすると、その種別で会員DBが絞り込まれます。<button class="btn-link" id="importToMain" title="入金済みのA1管理者会員のうち、発行用会員DBに未登録の人を追加します">📥 入金済みA1管理者を発行用会員DBへ取り込み</button></div>
           </aside>
           <section id="dbview" class="content">
             <h2 id="dbtitle">会員DB</h2>
@@ -1259,7 +1259,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611w', date:'2026-06-11', note:'会員分析タブ：wide列（メールアドレス・住所等）に overflow-wrap:anywhere を追加。連続英数字（メールアドレス等）が max-width:220px を超えて隣のセルにはみ出していたのを折り返しで解消。'};
+  const APP_BUILD = {version:'rev.0611x', date:'2026-06-11', note:'会員分析タブに「📥 入金済みA1管理者を発行用会員DBへ取り込み」ボタンを追加。分析CSVから A1管理者×入金済タグの会員を抽出し、発行用会員DBに未登録メールのみ追加（確認ダイアログ→GAS同期）。ライセンス数はCSVにないため空欄で追加。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2155,6 +2155,32 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     renderMembers();
     toast('追加しました');
   }
+  /* 会員分析タブ（分析CSV）からの一括取り込み。
+     候補 = 入金済みのA1管理者会員。既存メール（小文字比較）はスキップ。 */
+  window.csInviteImportMembers = function(cands){
+    if(!Array.isArray(cands) || !cands.length){
+      toast('対象（入金済みのA1管理者会員）が見つかりません', true); return;
+    }
+    const members = loadMembers();
+    const existing = new Set(members.map(m => (m.email||'').toLowerCase()).filter(Boolean));
+    const fresh = cands.filter(c => c.email && !existing.has(c.email.toLowerCase()));
+    const skip = cands.length - fresh.length;
+    if(!fresh.length){
+      toast('追加対象なし：対象 '+cands.length+' 件はすべて会員DBに登録済みです'); return;
+    }
+    const names = fresh.slice(0,10).map(c => c.name || c.email).join('、');
+    const msg = '発行用の会員DBへ '+fresh.length+' 件追加します。\n'
+      + (skip ? '（既に登録済みの '+skip+' 件はスキップ）\n' : '')
+      + '\n' + names + (fresh.length>10 ? ' ほか' : '')
+      + '\n\nよろしいですか？\n※ ライセンス数はCSVにないため空欄です。会員DB画面で入力してください。';
+    if(!confirm(msg)) return;
+    fresh.forEach(c => members.unshift({
+      id: uid(), name: c.name||'', company: c.company||'', email: c.email, license: ''
+    }));
+    commitMembers(members);
+    renderMembers();
+    toast(fresh.length+' 件を会員DBに追加しました');
+  };
   function updateMemberLicense(id, value){
     const members = loadMembers();
     const m = members.find(x => x.id === id);
@@ -2895,6 +2921,25 @@ function initAnalysis(){
     renderDB(key);
     /* フィルタ切替時はページ先頭に戻す（テーブル中腹のままだと位置が分かりにくいため） */
     window.scrollTo(0,0);
+  });
+  /* 発行用会員DBへの取り込み：入金済みのA1管理者会員を抽出してメイン側に渡す */
+  var imp=document.getElementById('importToMain');
+  if(imp) imp.addEventListener('click', function(){
+    if(!RAW){ alert('先に users CSV を読み込んでください。'); return; }
+    var cands=RAW.data.filter(function(r){ return !isTestRow(r); })
+      .filter(function(r){
+        var g=cell(r,'所属グループ');
+        return g.indexOf('A1管理者')>=0 && g.indexOf('入金済')>=0;
+      })
+      .map(function(r){
+        return {
+          name: cell(r,'名前'),
+          email: cell(r,'メールアドレス'),
+          company: cell(r,'所属企業・大学・組織名')
+        };
+      })
+      .filter(function(c){ return c.email; });
+    if(typeof window.csInviteImportMembers==='function') window.csInviteImportMembers(cands);
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
