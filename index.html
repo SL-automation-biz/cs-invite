@@ -843,14 +843,13 @@
 #ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
 #ana-root td.lft{text-align:left}
 #ana-root section table thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;z-index:40}
-/* テーブルラッパー：overflow を一切持たないことで、内側 thead の position:sticky を body スクロールに対して動作させる。
-   .tw に overflow-x:auto を入れると .tw がスクロールコンテナになり、thead がテーブル下端で打ち止めになる現象が出るため不可。
-   テーブルは width:100% でセル内テキストを折り返して縦長になるのを許容する。 */
-#ana-root .tw{overflow:visible;border:1px solid var(--ana-line);border-radius:8px;background:#fff}
-#ana-root .tw table{table-layout:auto;width:100%}
-#ana-root .tw td,#ana-root .tw th{white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+/* テーブルラッパー：.tw 自身を縦横スクロールコンテナにする。
+   こうすると内側 thead の position:sticky;top:0 は .tw のスクロールに対して確実に動作する。
+   max-height で .tw の高さを viewport - 上部固定領域 にして、テーブル領域内だけで縦スクロール。 */
+#ana-root .tw{overflow:auto;max-height:calc(100vh - var(--topbar-h, 96px) - 180px);border:1px solid var(--ana-line);border-radius:8px;background:#fff}
+#ana-root .tw table{white-space:nowrap}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
-#ana-root .tw thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px;z-index:40}
+#ana-root .tw thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px;z-index:40 !important}
 #ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px}
 #ana-root .tw td.lft{text-align:left}
 #ana-root .tw th.narrow,#ana-root .tw td.narrow{font-size:11.5px}
@@ -1252,7 +1251,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611q', date:'2026-06-11', note:'会員分析タブ：根本対応。.tw の overflow を完全に visible にして、thead sticky を body スクロールに対して動作させる。テーブルは width:100% でセル内折返し許容（長文は複数行）。これで横スクロールバーも消えて thead がカード直下に正しく貼り付く。'};
+  const APP_BUILD = {version:'rev.0611r', date:'2026-06-11', note:'会員分析タブ：方針転換。.tw 自身を max-height 付きの縦横スクロールコンテナにする。内側 thead は top:0 で .tw 内スクロールに対して sticky 動作。横スクロールバーも復活、列をぎゅっとせず本来の幅を確保。テーブル領域だけ独立スクロールになる UX。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2656,21 +2655,14 @@ function clearMaster(){
 }
 window.anaClearMaster = clearMaster;
 
-/* 2段 sticky の高さを動的に同期：親ヘッダー → cards(+note) → thead
-   sidebar が幅広く色付き bar として visible なので、その offsetHeight で thead 位置を確定 */
+/* .tw は自身のスクロールコンテナなので、thead は .tw 内 top:0 で sticky 動作する。
+   .tw の max-height だけは topbar 高さに合わせて再計算する。 */
 function syncStickyTop(){
-  var sb=document.querySelector('#ana-root .sidebar');
-  if(!sb) return;
-  var sH=sb.offsetHeight;
-  if(!sH) return;  /* タブ非表示時は0なので無視 */
   var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
-  var theadTop=topbarH+sH;
   var s=document.getElementById('anaStickyTopRule');
   if(!s){s=document.createElement('style');s.id='anaStickyTopRule';document.head.appendChild(s);}
-  /* th と tr の両方に top を設定（ブラウザ差吸収） */
-  s.textContent=
-    '#ana-root .tw thead th{top:'+theadTop+'px !important}'+
-    '#ana-root .tw thead tr{top:'+theadTop+'px !important}';
+  /* .tw の高さ = viewport - topbar - sidebar(cards) と note の合計 ≒ 180px 程度を確保 */
+  s.textContent='#ana-root .tw{max-height:calc(100vh - '+topbarH+'px - 180px) !important}';
 }
 window.anaSyncStickyTop = syncStickyTop;
 window.addEventListener('load', function(){ syncStickyTop(); setTimeout(syncStickyTop, 100); });
