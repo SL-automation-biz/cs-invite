@@ -555,11 +555,14 @@ function renderDB(filterKey){
     var note8 = certArr
       ? '<div class="note" style="margin-bottom:10px">学生証提出フォームの回答と<b>メールアドレスで照合</b>。<span class="cert-ok">🎓 提出済み</span> ／ <span class="cert-no">未提出</span>'+(window.__STUDENT_CERT_AT__?'（照合: '+window.__STUDENT_CERT_AT__+'）':'')+'</div>'
       : '<div class="note" style="margin-bottom:10px;border-left-color:#b9770e;background:#fdf3e2">学生証フォームの照合データが未連携です（自動取得で更新されると提出状況が表示されます）。</div>';
-    var th8='<tr><th>学生証</th>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+esc(c)+'</th>';}).join('')+'</tr>';
-    var body8=rows8.map(function(r){
+    var th8='<tr><th>学生証</th>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var body8=rows8.map(function(r,idx){
       var ok=certArr&&certSet[cell(r,'メールアドレス').toLowerCase()];
       var badge=!certArr?'<span class="cert-no">-</span>':(ok?'<span class="cert-ok">🎓 提出済み</span>':'<span class="cert-no">未提出</span>');
-      return '<tr>'+'<td>'+badge+'</td>'+KEEP8.map(function(c){return tdCell(r,c);}).join('')+'</tr>';
+      return '<tr>'+'<td>'+badge+'</td>'+KEEP8.map(function(c){
+        if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
+        return tdCell(r,c);
+      }).join('')+'</tr>';
     }).join('');
     dbbody.innerHTML=note8+(rows8.length?'<div class="tw"><table><thead>'+th8+'</thead><tbody>'+body8+'</tbody></table></div>':'<p class="empty">該当する会員はいません</p>');
     markActive(); return;
@@ -580,8 +583,11 @@ function renderDB(filterKey){
   var tbl;
   if(!rows.length){ tbl='<p class="empty">該当する会員はいません</p>'; }
   else{
-    var th='<tr>'+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+esc(c)+'</th>';}).join('')+'</tr>';
-    var body=rows.map(function(r){return '<tr>'+KEEP.map(function(c){return tdCell(r,c);}).join('')+'</tr>';}).join('');
+    var th='<tr>'+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var body=rows.map(function(r,idx){return '<tr>'+KEEP.map(function(c){
+      if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
+      return tdCell(r,c);
+    }).join('')+'</tr>';}).join('');
     tbl='<div class="tw"><table><thead>'+th+'</thead><tbody>'+body+'</tbody></table></div>';
   }
   dbbody.innerHTML=tbl;
