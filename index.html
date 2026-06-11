@@ -963,7 +963,7 @@
 
   <!-- ===== 会員分析画面（iframe で analysis.html を読み込み） ===== -->
   <div class="screen" id="screen-analysis">
-    <iframe src="./analysis.html?v=0611b" id="analysisFrame" title="会員分析" style="width:100%;height:calc(100vh - 110px);min-height:600px;border:none;background:#f4f6f9;display:block;"></iframe>
+    <iframe src="./analysis.html?v=0611c" id="analysisFrame" title="会員分析" style="width:100%;height:calc(100vh - 110px);min-height:600px;border:none;background:#f4f6f9;display:block;"></iframe>
   </div>
 </main>
 
@@ -1116,7 +1116,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611b', date:'2026-06-11', note:'会員分析タブ：①フォントをさらに圧縮（big number 24→20→16px等）、②KPIカードを上部 sticky に水平配置、③「マスター保存中」と「マスターをクリア」ボタンを表示、④iframe src にバージョンクエリ追加＋no-cache メタタグでキャッシュ回避。'};
+  const APP_BUILD = {version:'rev.0611c', date:'2026-06-11', note:'会員分析タブ：①テーブルヘッダーをKPIカードの下に sticky 固定（スクロール時も列名見える）、②所属グループ列をタグごとの色付きバッジ化（A0オレンジ／A1ティール／A2ブルー／A8紫／Y26入金済グリーン等）＋フォント縮小。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {

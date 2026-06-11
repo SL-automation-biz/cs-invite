@@ -165,6 +165,22 @@ thead th{font-size:12.5px}
 .role-rep,.role-dig{font-size:11px}
 .fb,.fw,.rb,.ev{font-size:11px;padding:0 6px}
 .empty{padding:20px;font-size:12.5px}
+/* テーブルヘッダーを KPIカードの下に sticky 固定 */
+section table thead th{position:sticky;top:62px;z-index:40}
+.tw thead th{top:62px}
+/* 所属グループ列：小さく＆色付きバッジ表示 */
+td .g-tag,td.lft .g-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px;margin:1px 2px 1px 0;white-space:nowrap;line-height:1.5;letter-spacing:.01em}
+.g-a0{background:#fff4e0;color:#8a5a08;border:1px solid #f0d199}
+.g-a1{background:#dcefe9;color:#138a86;border:1px solid #a8d6cf}
+.g-a2{background:#dcecfa;color:#1d4e8e;border:1px solid #a9c8e4}
+.g-a8{background:#ece2f5;color:#6c3fb5;border:1px solid #ccb4e1}
+.g-a9{background:#f4dfe2;color:#9e3a47;border:1px solid #dab8bf}
+.g-paid{background:#1f8a5a;color:#fff;border:1px solid #1f8a5a}
+.g-year{background:#eef1f5;color:#5b6675;border:1px solid #dde2ea}
+.g-view{background:#e3f3ec;color:#1f8a5a;border:1px solid #bfe2d2}
+.g-test{background:#777;color:#fff;border:1px solid #777}
+/* 所属グループ列はやや狭め＆セル内も詰める */
+td.wide{max-width:200px}
 </style>
 </head>
 <body>
@@ -410,12 +426,29 @@ function parentOf(pm){ if(!pm)return null; var t=pm.toLowerCase();
   for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス').toLowerCase()===t) return RAW.data[i]; } return null; }
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
 function colcls(c){var a=[]; if(LEFT.indexOf(c)>=0)a.push('lft'); if(WIDE.indexOf(c)>=0)a.push('wide'); else if(NARROW.indexOf(c)>=0)a.push('narrow'); return a.join(' ');}
+function groupTagsHTML(v){
+  var tags=String(v||'').split(';').map(function(s){return s.trim();}).filter(Boolean);
+  return tags.map(function(t){
+    var cls='g-tag';
+    if(t.indexOf('A0')===0) cls+=' g-a0';
+    else if(t.indexOf('A1')===0) cls+=' g-a1';
+    else if(t.indexOf('A2')===0) cls+=' g-a2';
+    else if(t.indexOf('A8')===0) cls+=' g-a8';
+    else if(t.indexOf('A9')===0) cls+=' g-a9';
+    else if(t.indexOf('Y')===0 && t.indexOf('入金済')>=0) cls+=' g-paid';
+    else if(t.indexOf('Y')===0) cls+=' g-year';
+    else if(t.indexOf('【閲覧可】')===0) cls+=' g-view';
+    else if(t.indexOf('テスト')>=0) cls+=' g-test';
+    return '<span class="'+cls+'">'+esc(t)+'</span>';
+  }).join('');
+}
 function tdCell(r,c){
   var v=cell(r,c), inner=esc(v);
   if(c==='メール認証済み'&&v==='') inner='<span class="fb">未認証</span>';
   else if(c==='Stripe 顧客ID'&&v==='') inner='<span class="fw">なし</span>';
   else if(c==='無効化済み'&&v!=='') inner='<span class="fb">'+esc(v)+'</span>';
   else if(c==='名前'&&/【テスト|【ﾃｽﾄ/.test(v)) inner=esc(v)+' <span class="bt">TEST</span>';
+  else if(c==='所属グループ'&&v) inner=groupTagsHTML(v);
   return '<td class="'+colcls(c)+'">'+inner+'</td>';
 }
 function renderGrouped(records,KEEP,parents){
