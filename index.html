@@ -857,12 +857,15 @@
 #ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:#fff;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
-/* 発行用DB 状態列（A1ビュー）：追加済バッジ／＋DB追加ボタン／入金待ち */
-#ana-root .dbst{white-space:nowrap}
-#ana-root .dbst-ok{color:#1f8a5a;font-weight:700;font-size:11.5px;white-space:nowrap}
-#ana-root .dbst-wait{color:#8392a5;font-size:11.5px;white-space:nowrap}
-#ana-root .dbst-add{background:var(--ana-brand);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;white-space:nowrap;font-family:inherit}
+/* 発行用DB 状態列（A1ビュー）：3状態ともセルいっぱいのボタン風表示で統一 */
+#ana-root td.dbst{padding:3px;min-width:92px}
+#ana-root th.dbst{white-space:nowrap}
+#ana-root .dbst-add{display:block;width:100%;box-sizing:border-box;background:var(--ana-brand);color:#fff;border:none;border-radius:6px;padding:9px 8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 #ana-root .dbst-add:hover{background:#175a62}
+/* 追加済：グレーの押下済みボタン風 */
+#ana-root .dbst-ok{display:block;width:100%;box-sizing:border-box;background:#e3e7eb;color:#7b8694;border-radius:6px;padding:9px 8px;font-size:11.5px;font-weight:700;text-align:center;white-space:nowrap;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+/* 入金待ち：赤 */
+#ana-root .dbst-wait{display:block;width:100%;box-sizing:border-box;background:#fdeaea;color:#c0392b;border-radius:6px;padding:9px 8px;font-size:11.5px;font-weight:700;text-align:center;white-space:nowrap}
 /* wide列はメールアドレス等の連続英数字も折り返せるよう overflow-wrap を指定（はみ出し防止） */
 #ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px;overflow-wrap:anywhere;word-break:break-word}
 #ana-root .tw td.lft{text-align:left}
@@ -1103,7 +1106,7 @@
         <div id="result" class="hide">
           <aside class="sidebar">
             <div class="cards" id="cards"></div>
-            <div class="muted" style="margin-top:6px">※ メニューをクリックすると、その種別で会員DBが絞り込まれます。<button class="btn-link" id="importToMain" title="入金済みのA1管理者会員のうち、発行用会員DBに未登録の人を追加します">📥 入金済みA1管理者を発行用会員DBへ取り込み</button></div>
+            <div class="muted" style="margin-top:6px">※ メニューをクリックすると、その種別で会員DBが絞り込まれます。A1ビューでは行ごとに発行用会員DBへの追加状態が表示されます。</div>
           </aside>
           <section id="dbview" class="content">
             <h2 id="dbtitle">会員DB</h2>
@@ -1265,7 +1268,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611z', date:'2026-06-11', note:'会員分析タブのA1ビューに「発行用DB」状態列を追加。行ごとに ✓追加済（緑）／＋DB追加ボタン（入金済み未登録→1クリック追加）／入金待ち（グレー）を表示。追加後は行表示が即座に「追加済」へ更新され、GASにも同期。'};
+  const APP_BUILD = {version:'rev.0611aa', date:'2026-06-11', note:'発行用DB状態列の見た目を改善：3状態ともセルいっぱいのボタン風に統一（＋DB追加＝ブランド色／追加済＝グレー押下済み風／入金待ち＝赤）。一括取り込みボタン「📥 入金済みA1管理者を…」は行ごと操作に置き換えたため削除（関連コードごと）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2179,37 +2182,6 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     toast('会員DBに追加しました：'+(c.name||c.email));
     return true;
   };
-  /* 会員分析タブ（分析CSV）からの一括取り込み。
-     候補 = 入金済みのA1管理者会員。既存メール（小文字比較）はスキップ。 */
-  window.csInviteImportMembers = function(cands, stats){
-    const breakdown = stats && stats.a1Total!=null
-      ? '【内訳】A1管理者会員 '+stats.a1Total+' 件中、入金済タグあり '+cands.length+' 件が取り込み対象\n（未入金の '+(stats.a1Total-cands.length)+' 件は対象外）\n\n'
-      : '';
-    if(!Array.isArray(cands) || !cands.length){
-      toast('対象（入金済みのA1管理者会員）が見つかりません', true); return;
-    }
-    const members = loadMembers();
-    const existing = new Set(members.map(m => (m.email||'').toLowerCase()).filter(Boolean));
-    const fresh = cands.filter(c => c.email && !existing.has(c.email.toLowerCase()));
-    const skip = cands.length - fresh.length;
-    if(!fresh.length){
-      alert(breakdown + '追加対象なし：対象 '+cands.length+' 件はすべて会員DBに登録済みです。');
-      return;
-    }
-    const names = fresh.slice(0,10).map(c => c.name || c.email).join('、');
-    const msg = breakdown
-      + '発行用の会員DBへ '+fresh.length+' 件追加します。\n'
-      + (skip ? '（既に登録済みの '+skip+' 件はスキップ）\n' : '')
-      + '\n' + names + (fresh.length>10 ? ' ほか' : '')
-      + '\n\nよろしいですか？\n※ ライセンス数はCSVにないため空欄です。会員DB画面で入力してください。';
-    if(!confirm(msg)) return;
-    fresh.forEach(c => members.unshift({
-      id: uid(), name: c.name||'', company: c.company||'', email: c.email, license: ''
-    }));
-    commitMembers(members);
-    renderMembers();
-    toast(fresh.length+' 件を会員DBに追加しました');
-  };
   function updateMemberLicense(id, value){
     const members = loadMembers();
     const m = members.find(x => x.id === id);
@@ -2959,22 +2931,6 @@ function initAnalysis(){
     renderDB(key);
     /* フィルタ切替時はページ先頭に戻す（テーブル中腹のままだと位置が分かりにくいため） */
     window.scrollTo(0,0);
-  });
-  /* 発行用会員DBへの取り込み：入金済みのA1管理者会員を抽出してメイン側に渡す */
-  var imp=document.getElementById('importToMain');
-  if(imp) imp.addEventListener('click', function(){
-    if(!RAW){ alert('先に users CSV を読み込んでください。'); return; }
-    var a1=RAW.data.filter(function(r){ return !isTestRow(r) && cell(r,'所属グループ').indexOf('A1管理者')>=0; });
-    var cands=a1.filter(function(r){ return cell(r,'所属グループ').indexOf('入金済')>=0; })
-      .map(function(r){
-        return {
-          name: cell(r,'名前'),
-          email: cell(r,'メールアドレス'),
-          company: cell(r,'所属企業・大学・組織名')
-        };
-      })
-      .filter(function(c){ return c.email; });
-    if(typeof window.csInviteImportMembers==='function') window.csInviteImportMembers(cands, {a1Total:a1.length});
   });
   /* A1ビューの行ごと「＋ DB追加」ボタン（イベントデリゲーション） */
   document.getElementById('dbbody').addEventListener('click', function(e){
