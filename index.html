@@ -842,13 +842,16 @@
 #ana-root th,#ana-root td{border:1px solid var(--ana-line);padding:4px 7px;vertical-align:middle;text-align:center}
 #ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
 #ana-root td.lft{text-align:left}
-/* thead の固定は position:sticky ではなく JS（syncStickyTop）の translateY 追従で行う。
-   position:sticky は .tw の overflow-x:auto と両立しない（.tw がスクロールコンテナ化して
-   thead がテーブル内の変な位置に貼り付く）ため。 */
 #ana-root section table thead th{background:var(--ana-brand);color:#fff}
 /* テーブルラッパー：横スクロールのみ。縦はページ全体のスクロールに統一（内部縦スクロールなし） */
 #ana-root .tw{overflow-x:auto;border:1px solid var(--ana-line);border-radius:8px;background:#fff}
 #ana-root .tw table{white-space:nowrap}
+/* フロートヘッダー（thead クローン）：
+   thead 本体の position:sticky は .tw の overflow-x:auto と両立しないため、
+   .tw の直前に高さ0の sticky コンテナを置き、その中に thead だけ複製して固定表示する。
+   縦の固定は CSS sticky（スクロール遅延ゼロ）、横は .tw のスクロールに JS で同期。 */
+#ana-root .twfh{position:sticky;top:var(--ana-thead-top,176px);height:0;z-index:45}
+#ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:transparent;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
 #ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px}
@@ -1252,7 +1255,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611s', date:'2026-06-11', note:'会員分析タブ：thead固定をposition:stickyからJS translateY追従に変更。stickyはoverflow-x:autoと両立しないため。内部縦スクロール廃止（ページスクロールに統一）、横スクロール維持、max-height撤去で余白も解消。'};
+  const APP_BUILD = {version:'rev.0611t', date:'2026-06-11', note:'会員分析タブ：thead固定をフロートヘッダー方式に変更。JS translateY追従はスクロール時に1フレーム遅れて「降りてくる」のが見えるため、theadのクローンをCSS stickyコンテナに入れて遅延ゼロで固定。横スクロールはscrollLeft同期。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2656,31 +2659,48 @@ function clearMaster(){
 }
 window.anaClearMaster = clearMaster;
 
-/* thead 追従（JS方式）：
-   position:sticky は .tw の overflow-x:auto と両立しないため、ページスクロールに
-   合わせて各テーブルの thead を translateY で「親ヘッダー + cards の直下」に追従させる。
-   テーブル下端に達したら打ち止め（テーブルの外には出ない）。 */
+/* thead 固定（フロートヘッダー方式）：
+   .tw の直前に高さ0の position:sticky コンテナ（.twfh）を挿入し、その中に thead だけ
+   複製したテーブルを置く。縦の固定は CSS sticky なのでスクロール遅延ゼロ。
+   列幅は実テーブルの th から複製し、横スクロールは .tw の scroll イベントで同期する。 */
 function syncStickyTop(){
   var screen=document.getElementById('screen-analysis');
   if(!screen || !screen.classList.contains('active')) return;
-  /* 旧方式の動的styleが残っていたら除去 */
-  var old=document.getElementById('anaStickyTopRule'); if(old) old.remove();
   var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
   var sb=document.querySelector('#ana-root .sidebar');
   var line=topbarH+(sb?sb.offsetHeight:0);
-  document.querySelectorAll('#ana-root table').forEach(function(tbl){
-    var thead=tbl.tHead; if(!thead) return;
-    var rect=tbl.getBoundingClientRect();
-    if(!rect.height) return;
-    var off=line-rect.top;
-    var max=rect.height-thead.offsetHeight;
-    if(off<0) off=0;
-    if(off>max) off=max;
-    thead.style.transform = off>0 ? 'translateY('+off+'px)' : '';
+  document.documentElement.style.setProperty('--ana-thead-top', line+'px');
+  buildFloatHeads();
+}
+function buildFloatHeads(){
+  document.querySelectorAll('#ana-root .tw').forEach(function(tw){
+    if(tw.closest('.twfh')) return;  /* クローン側の .tw はスキップ */
+    var table=tw.querySelector('table');
+    if(!table || !table.tHead || !table.tHead.rows.length) return;
+    var prev=tw.previousElementSibling;
+    var fh=(prev && prev.classList && prev.classList.contains('twfh'))?prev:null;
+    if(!fh){
+      fh=document.createElement('div'); fh.className='twfh';
+      fh.innerHTML='<div class="tw"></div>';
+      tw.parentNode.insertBefore(fh, tw);
+      tw.addEventListener('scroll', function(){ fh.firstElementChild.scrollLeft=tw.scrollLeft; }, {passive:true});
+    }
+    var holder=fh.firstElementChild;
+    var clone=table.cloneNode(false);
+    clone.appendChild(table.tHead.cloneNode(true));
+    /* 列幅・全体幅を実テーブルに合わせる（table-layout:fixed で確定させる） */
+    clone.style.tableLayout='fixed';
+    clone.style.width=table.getBoundingClientRect().width+'px';
+    var realThs=table.tHead.rows[0].cells, cloneThs=clone.tHead.rows[0].cells;
+    for(var i=0;i<realThs.length;i++){
+      cloneThs[i].style.width=realThs[i].getBoundingClientRect().width+'px';
+    }
+    holder.innerHTML='';
+    holder.appendChild(clone);
+    holder.scrollLeft=tw.scrollLeft;
   });
 }
 window.anaSyncStickyTop = syncStickyTop;
-window.addEventListener('scroll', function(){ requestAnimationFrame(syncStickyTop); }, {passive:true});
 window.addEventListener('load', function(){ syncStickyTop(); setTimeout(syncStickyTop, 100); });
 window.addEventListener('resize', syncStickyTop);
 
