@@ -129,9 +129,9 @@ h1{font-size:16px;margin:0 0 2px}
 .btn-link{background:transparent;color:var(--sub);border:1px solid var(--line);padding:2px 8px;font-size:11px;border-radius:4px;cursor:pointer;font-family:inherit;margin-left:6px}
 .btn-link:hover{background:#f0f3f6;color:var(--bad)}
 .toggle{padding:4px 9px;font-size:11.5px;margin-bottom:8px;border-radius:5px}
-.layout{display:block}
-.sidebar{flex:none;width:100%;position:sticky;top:0;background:var(--bg);z-index:50;padding:4px 0 6px;margin-bottom:0;box-shadow:0 6px 8px -10px rgba(0,0,0,.18)}
-.content{flex:none;width:100%;min-width:0;margin-bottom:0}
+.layout{display:block !important}
+.sidebar{flex:none !important;width:100% !important;position:sticky !important;top:0 !important;background:var(--bg) !important;z-index:50 !important;padding:6px 0 8px !important;margin-bottom:8px !important;box-shadow:0 6px 8px -10px rgba(0,0,0,.2) !important}
+.content{flex:none !important;width:100% !important;min-width:0 !important;margin-bottom:0 !important}
 .cards{flex-direction:row;flex-wrap:wrap;gap:5px}
 .card{flex:1;min-width:108px;padding:5px 8px;text-align:center;border-top-width:3px}
 .card.c-total{flex:1.3}
@@ -165,9 +165,9 @@ thead th{font-size:12.5px}
 .role-rep,.role-dig{font-size:11px}
 .fb,.fw,.rb,.ev{font-size:11px;padding:0 6px}
 .empty{padding:20px;font-size:12.5px}
-/* テーブルヘッダーを KPIカードの下に sticky 固定 */
-section table thead th{position:sticky;top:62px;z-index:40}
-.tw thead th{top:62px}
+/* テーブルヘッダーを KPIカードの下に sticky 固定（top値は JS で動的設定） */
+section table thead th{position:sticky;top:0;z-index:40;background:var(--brand);color:#fff}
+.tw thead th{top:0}
 /* 所属グループ列：小さく＆色付きバッジ表示 */
 td .g-tag,td.lft .g-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px;margin:1px 2px 1px 0;white-space:nowrap;line-height:1.5;letter-spacing:.01em}
 .g-a0{background:#fff4e0;color:#8a5a08;border:1px solid #f0d199}
@@ -353,6 +353,20 @@ function clearMaster(){
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
   location.reload();
 }
+/* sidebar の実高さを測って、テーブル thead の sticky top を合わせる */
+function syncStickyTop(){
+  var sb=document.querySelector('.sidebar');
+  if(!sb) return;
+  var h=sb.offsetHeight;
+  if(!h) return;
+  var s=document.getElementById('stickyTopRule');
+  if(!s){s=document.createElement('style');s.id='stickyTopRule';document.head.appendChild(s);}
+  s.textContent='section table thead th,.tw thead th{top:'+h+'px !important}';
+}
+window.addEventListener('load', syncStickyTop);
+window.addEventListener('resize', syncStickyTop);
+/* DOM変化（カード描画後など）もキャッチ */
+new MutationObserver(syncStickyTop).observe(document.body,{childList:true,subtree:true});
 
 /* ===== 自動読込（HTMLを開くだけで最新データを自動表示）=====
    ① data.js（最新CSVから生成・同梱）を最優先 … CSVを更新してdata.jsを作り直せば「開くだけで最新」
