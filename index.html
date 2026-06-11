@@ -836,8 +836,8 @@
 #ana-root .cert-ok{display:inline-block;background:#e3f3ec;color:#1f8a5a;border:1px solid #bfe2d2;border-radius:10px;padding:1px 9px;font-size:12px;font-weight:700;white-space:nowrap}
 #ana-root .cert-no{display:inline-block;color:#b1245e;font-size:12px;font-weight:700;white-space:nowrap}
 /* セクション・表 */
-#ana-root section{background:#fff;border:1px solid var(--ana-line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
-#ana-root section h2{font-size:13.5px;margin:0 0 8px;border-left:4px solid var(--ana-brand);padding-left:8px}
+#ana-root section{background:#fff;border:1px solid var(--ana-line);border-radius:8px;padding:0 12px 10px;margin-bottom:12px;overflow:visible}
+#ana-root section h2{font-size:13.5px;margin:0;padding:10px 0 8px 8px;border-left:4px solid var(--ana-brand);background:#fff;position:sticky;top:var(--ana-title-top, 176px);z-index:45;border-radius:7px 7px 0 0}
 #ana-root table{border-collapse:collapse;width:100%;font-size:12.5px}
 #ana-root th,#ana-root td{border:1px solid var(--ana-line);padding:4px 7px;vertical-align:middle;text-align:center}
 #ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
@@ -1249,7 +1249,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611k', date:'2026-06-11', note:'会員分析タブ：sticky設計を body スクロール統一に。親ヘッダー(sticky top:0)はそのまま、cards は top:var(--topbar-h) で親ヘッダー直下、thead は topbar-h + cards 高さで cards 直下に sticky。screen-analysis 独立スクロールをやめてシンプル化。'};
+  const APP_BUILD = {version:'rev.0611l', date:'2026-06-11', note:'会員分析タブ：①会員DB見出し(h2#dbtitle)を sticky に追加、②syncStickyTop を switchScreen→analysis 時にも実行（タブ表示後にサイドバー実高さが確定するため）、③重ね順を「親ヘッダー → cards → 見出し → thead」の4段 sticky に整理。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1836,6 +1836,10 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     document.body.classList.toggle('bg-analysis', s==='analysis');
     window.scrollTo(0,0);
     if(s==='history') renderHistory();
+    /* 会員分析タブが表示された直後は sidebar 高さが確定するので sticky top を再計算 */
+    if(s==='analysis' && typeof window.anaSyncStickyTop==='function'){
+      requestAnimationFrame(function(){ window.anaSyncStickyTop(); setTimeout(window.anaSyncStickyTop, 50); });
+    }
   }
   function switchSubTab(t){
     [['input','stInput','pane-input'],['instr','stInstr','pane-instr'],['url','stUrl','pane-url']]
@@ -2649,19 +2653,26 @@ function clearMaster(){
 }
 window.anaClearMaster = clearMaster;
 
-/* sidebar の実高さと親 topbar-h を合算して、テーブル thead の sticky top を動的に同期 */
+/* 4段 sticky の高さを動的に同期：親ヘッダー → cards → 見出し(h2) → thead */
 function syncStickyTop(){
   var sb=document.querySelector('#ana-root .sidebar');
   if(!sb) return;
   var sH=sb.offsetHeight;
-  if(!sH) return;
+  if(!sH) return;  /* タブ非表示時は0なので無視 */
   var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
-  var theadTop=topbarH+sH;
+  /* 見出しの位置：親ヘッダー + cards の下 */
+  var titleTop=topbarH+sH;
+  document.documentElement.style.setProperty('--ana-title-top', titleTop + 'px');
+  /* thead の位置：見出しの下（見出しの実高さを後で測って加算） */
+  var dbtitle=document.getElementById('dbtitle');
+  var titleH=dbtitle?dbtitle.offsetHeight:30;
+  var theadTop=titleTop+titleH;
   var s=document.getElementById('anaStickyTopRule');
   if(!s){s=document.createElement('style');s.id='anaStickyTopRule';document.head.appendChild(s);}
   s.textContent='#ana-root section table thead th,#ana-root .tw thead th{top:'+theadTop+'px !important}';
 }
-window.addEventListener('load', syncStickyTop);
+window.anaSyncStickyTop = syncStickyTop;
+window.addEventListener('load', function(){ syncStickyTop(); setTimeout(syncStickyTop, 100); });
 window.addEventListener('resize', syncStickyTop);
 
 /* ===== 自動読込 ===== */
