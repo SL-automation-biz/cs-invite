@@ -857,7 +857,8 @@
 #ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:#fff;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
-#ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px}
+/* wide列はメールアドレス等の連続英数字も折り返せるよう overflow-wrap を指定（はみ出し防止） */
+#ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px;overflow-wrap:anywhere;word-break:break-word}
 #ana-root .tw td.lft{text-align:left}
 #ana-root .tw th.narrow,#ana-root .tw td.narrow{font-size:11.5px}
 #ana-root .chkcol{width:34px;background:#f3f6f8}
@@ -1258,7 +1259,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611v', date:'2026-06-11', note:'会員分析タブ：①theadクローン上端の透け修正（クローン背景を白に・見出し高さを実測小数で取得し1px重ね）。②カードでフィルタ切替時にページ先頭へ自動スクロール。'};
+  const APP_BUILD = {version:'rev.0611w', date:'2026-06-11', note:'会員分析タブ：wide列（メールアドレス・住所等）に overflow-wrap:anywhere を追加。連続英数字（メールアドレス等）が max-width:220px を超えて隣のセルにはみ出していたのを折り返しで解消。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
