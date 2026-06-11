@@ -843,8 +843,8 @@
 #ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
 #ana-root td.lft{text-align:left}
 #ana-root section table thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;z-index:40}
-/* テーブルラッパー：overflow:visible で sticky thead を body スクロールに対して機能させる */
-#ana-root .tw{overflow:visible;border:1px solid var(--ana-line);border-radius:8px;background:#fff}
+/* テーブルラッパー：横スクロール可（テーブルが箱の中で完結）、縦はvisibleで sticky thead を body スクロールに効かせる */
+#ana-root .tw{overflow-x:auto;overflow-y:visible;border:1px solid var(--ana-line);border-radius:8px;background:#fff;max-width:100%}
 #ana-root .tw table{white-space:nowrap}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px;z-index:40}
@@ -1249,7 +1249,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611m', date:'2026-06-11', note:'会員分析タブ：sticky をシンプル化（cards と thead の2段のみ）。h2 の sticky と .tw の overflow を解除して、thead 単独で body スクロールに対して sticky 動作するように。'};
+  const APP_BUILD = {version:'rev.0611n', date:'2026-06-11', note:'会員分析タブ：.tw に overflow-x:auto を戻してテーブルを箱に収める（rev.0611m で外したらテーブルがsidebar 右に飛び出してカードの脇にデータが見えていた）。縦は overflow-y:visible のままで thead sticky を body スクロールに対して機能させる。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
