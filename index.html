@@ -789,10 +789,8 @@
   font-family:"BIZ UDPGothic","BIZ UDP Gothic","Yu Gothic UI","Meiryo",sans-serif;
   color:var(--ana-ink); font-size:12px; line-height:1.5;
 }
-/* 会員分析タブ表示中は body をスクロール禁止にして、screen-analysis のみがスクロール */
-body.analysis-active{height:100vh;overflow:hidden}
-#screen-analysis{background:#f4f6f9;position:relative;padding:0}
-body.analysis-active #screen-analysis{height:calc(100vh - 110px);overflow-y:auto;overflow-x:hidden}
+/* body スクロールに統一。親ヘッダーは sticky top:0、カードはその下に sticky */
+#screen-analysis{background:#f4f6f9;position:relative;padding:0;min-height:calc(100vh - var(--topbar-h, 96px))}
 #ana-root *{box-sizing:border-box}
 #ana-root .wrap{max-width:none;margin:0;padding:8px 12px 40px}
 #ana-root h1{font-size:16px;margin:0 0 2px}
@@ -812,7 +810,7 @@ body.analysis-active #screen-analysis{height:calc(100vh - 110px);overflow-y:auto
 #ana-root .btn-link:hover{background:#f0f3f6;color:var(--ana-bad)}
 #ana-root .hide{display:none}
 /* レイアウト：cards 上部 sticky / content 下 */
-#ana-root .sidebar{width:100%;background:#f4f6f9;padding:6px 0 8px;margin-bottom:0;position:sticky;top:0;z-index:50;box-shadow:0 6px 8px -10px rgba(0,0,0,.22)}
+#ana-root .sidebar{width:100%;background:#f4f6f9;padding:6px 12px 8px;margin-bottom:0;position:sticky;top:var(--topbar-h, 96px);z-index:50;box-shadow:0 6px 8px -10px rgba(0,0,0,.22)}
 #ana-root .content{width:100%;min-width:0;margin-bottom:0}
 /* カード */
 #ana-root .cards{display:flex;flex-direction:row;flex-wrap:wrap;gap:5px}
@@ -1251,7 +1249,7 @@ body.analysis-active #screen-analysis{height:calc(100vh - 110px);overflow-y:auto
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611j', date:'2026-06-11', note:'会員分析タブ：body のスクロールが干渉して sticky cards が親ヘッダーと重なる問題を修正。switchScreen で body に analysis-active クラスを付与し、その間は body{height:100vh;overflow:hidden} で固定。screen-analysis のみがスクロールするようにし、単一スクロール化。'};
+  const APP_BUILD = {version:'rev.0611k', date:'2026-06-11', note:'会員分析タブ：sticky設計を body スクロール統一に。親ヘッダー(sticky top:0)はそのまま、cards は top:var(--topbar-h) で親ヘッダー直下、thead は topbar-h + cards 高さで cards 直下に sticky。screen-analysis 独立スクロールをやめてシンプル化。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1836,7 +1834,6 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     document.body.classList.toggle('bg-work', s==='work');
     document.body.classList.toggle('bg-history', s==='history');
     document.body.classList.toggle('bg-analysis', s==='analysis');
-    document.body.classList.toggle('analysis-active', s==='analysis');
     window.scrollTo(0,0);
     if(s==='history') renderHistory();
   }
@@ -2652,15 +2649,17 @@ function clearMaster(){
 }
 window.anaClearMaster = clearMaster;
 
-/* sidebar の実高さを測って、テーブル thead の sticky top を動的に同期 */
+/* sidebar の実高さと親 topbar-h を合算して、テーブル thead の sticky top を動的に同期 */
 function syncStickyTop(){
   var sb=document.querySelector('#ana-root .sidebar');
   if(!sb) return;
-  var h=sb.offsetHeight;
-  if(!h) return;
+  var sH=sb.offsetHeight;
+  if(!sH) return;
+  var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
+  var theadTop=topbarH+sH;
   var s=document.getElementById('anaStickyTopRule');
   if(!s){s=document.createElement('style');s.id='anaStickyTopRule';document.head.appendChild(s);}
-  s.textContent='#ana-root section table thead th,#ana-root .tw thead th{top:'+h+'px !important}';
+  s.textContent='#ana-root section table thead th,#ana-root .tw thead th{top:'+theadTop+'px !important}';
 }
 window.addEventListener('load', syncStickyTop);
 window.addEventListener('resize', syncStickyTop);
