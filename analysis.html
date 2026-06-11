@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ワンストリーム 会員登録件数確認ツール</title>
+<style>
+:root{--ink:#1f2733;--sub:#5b6675;--line:#dfe4ea;--bg:#f4f6f9;
+ --brand:#1f6f78;--brandbg:#e6f1f2;--bad:#c0392b;--badbg:#fdecea;
+ --warn:#b9770e;--warnbg:#fdf3e2;--good:#1f8a5a;--teal:#138a86;--mark:#fff6c2;}
+*{box-sizing:border-box}
+body{font-family:"BIZ UDPゴシック","BIZ UDPGothic",system-ui,sans-serif;
+ margin:0;color:var(--ink);background:var(--bg);font-size:15px;line-height:1.6}
+.wrap{max-width:1400px;margin:0 auto;padding:20px 18px 70px}
+h1{font-size:23px;margin:0 0 2px}
+.sub{color:var(--sub);font-size:14px;margin-bottom:14px}
+/* 読込状態 */
+.load{border:2px dashed #b9c4ce;border-radius:12px;background:#fff;padding:18px;
+ text-align:center;margin-bottom:16px;transition:.15s}
+.load.hot{border-color:var(--brand);background:var(--brandbg)}
+.load.ok{border-style:solid;border-color:var(--teal);background:#f0faf8}
+.load.err{border-color:var(--bad);background:var(--badbg)}
+.load .big{font-size:16px;font-weight:700;margin-bottom:4px}
+.load .hint{color:var(--sub);font-size:13.5px}
+#srcname{font-weight:700;color:var(--brand)}
+.btn{display:inline-block;background:var(--brand);color:#fff;border:none;border-radius:8px;
+ padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;margin-top:8px}
+.btn:hover{background:#175a62}
+/* コントロール */
+.toggle{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 14px;
+ font-size:13.5px;margin-bottom:16px}
+.toggle label{cursor:pointer}
+/* カード */
+/* 左サイドメニュー × 右コンテンツ */
+.layout{display:flex;gap:18px;align-items:flex-start}
+.sidebar{flex:0 0 230px}
+.content{flex:1;min-width:0;margin-bottom:0}
+@media(max-width:760px){.layout{flex-direction:column}.sidebar{flex:none;width:100%}}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-align:center;border-top:5px solid #ccc}
+.card.c-latest{border-top-color:var(--good)}
+.card.c-diff{border-top-color:var(--warn)} .card.c-test{border-top-color:#9aa6b2}
+/* 総数＝塗りつぶしで強調 */
+.card.c-total{background:var(--brand);border-color:var(--brand);border-top-color:#14545b}
+.card.c-total .l{color:#d4e9ea;font-size:13px}
+.card.c-total .n{color:#fff!important;font-size:38px}
+.card.c-total .note{background:rgba(255,255,255,.16);color:#eaf6f6}
+/* 内訳見出し */
+.breakdown-label{font-size:12px;color:var(--sub);font-weight:700;margin:8px 0 2px;padding-left:8px;border-left:4px solid var(--teal)}
+/* 管理用タグ（A0/A1等のコード）＝種別名と区別した小さなバッジ */
+.codetag{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:#5b6675;background:#eef2f5;border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-right:4px;vertical-align:1px}
+/* 学生証 提出ステータス */
+.cert-ok{display:inline-block;background:#e3f3ec;color:#1f8a5a;border:1px solid #bfe2d2;border-radius:10px;padding:1px 9px;font-size:13px;font-weight:700;white-space:nowrap}
+.cert-no{display:inline-block;color:#b1245e;font-size:13px;font-weight:700;white-space:nowrap}
+/* 内訳カード＝インデント＋控えめ */
+.card.c-type{border-top-color:var(--teal);margin-left:16px} .card.c-type .l{font-size:12px} .card.c-type .n{color:var(--teal);font-size:24px}
+.card.clickable{cursor:pointer;transition:.12s}
+.card.clickable:hover{box-shadow:0 3px 12px rgba(31,111,120,.22);transform:translateY(-2px)}
+.card.active{outline:3px solid var(--brand);outline-offset:-1px}
+.card .l{font-size:12.5px;color:var(--sub)}
+.card .n{font-size:32px;font-weight:800;color:var(--brand);line-height:1.1;margin-top:4px}
+.card.c-latest .n{color:var(--good)} .card.c-test .n{color:#9aa6b2}
+.card .note{font-size:12px;color:#8392a5;margin-top:3px}
+/* セクション・表 */
+section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:20px}
+section h2{font-size:16px;margin:0 0 12px;border-left:5px solid var(--brand);padding-left:10px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:7px 10px;vertical-align:middle;text-align:center}
+thead th{background:var(--brand);color:#fff;font-weight:600;font-size:14px}
+td.lft{text-align:left}
+.bar{height:14px;background:var(--brand);border-radius:3px;display:inline-block;vertical-align:middle}
+.barwrap{display:flex;align-items:center;gap:8px}
+.muted{color:var(--sub);font-size:12px;margin-top:8px}
+#verstamp{position:fixed;right:8px;bottom:6px;z-index:95;background:rgba(31,39,51,.82);color:#fff;
+ font-size:11px;line-height:1.3;padding:3px 9px;border-radius:8px;
+ font-family:ui-monospace,Menlo,Consolas,monospace;max-width:46vw;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap}
+.hide{display:none}
+/* ===== ツール切替 ===== */
+.toolswitch{display:flex;gap:8px;margin:6px 0 16px;flex-wrap:wrap}
+.tsw{appearance:none;border:1px solid var(--line);background:#fff;color:var(--sub);padding:10px 18px;border-radius:10px;cursor:pointer;font-size:15px;font-family:inherit;font-weight:700}
+.tsw.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+/* ===== ツール3：デジタル会員（会員リスト自動抽出ツール.htmlから移植） ===== */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.tw table{white-space:nowrap}
+.tw th,.tw td{border:1px solid var(--line);padding:5px 8px;vertical-align:middle;text-align:center}
+.tw thead th{position:sticky;top:0;background:var(--brand);color:#fff;font-weight:600;font-size:14px;z-index:2}
+.tw th.wide,.tw td.wide{white-space:normal;min-width:170px;max-width:280px}
+.tw td.lft{text-align:left}
+.tw th.narrow,.tw td.narrow{font-size:13px}
+.chkcol{width:34px;background:#f3f6f8}
+.tw thead th.chkcol{background:#15565e}
+.chkcol input{width:16px;height:16px;cursor:pointer}
+.tw tbody tr:nth-child(even){background:#fafbfc}
+.tw tbody tr:hover{background:#eef6f7}
+.tw tbody tr.marked{background:var(--mark)!important}
+tr.grp td,tr.grp:hover td{background:#e8f0f1;font-weight:700;text-align:left;color:#234;font-size:12.5px}
+.gmail{color:var(--brand);font-weight:700} .gwarn{color:var(--warn);font-weight:600;font-size:13px}
+tr.rep td{background:#e3f3f0;border-top:2px solid var(--teal)} tr.rep:hover td{background:#d6ece7}
+.role-rep{background:var(--teal);color:#fff;font-size:13px;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
+.role-dig{background:#edf0f7;color:#3a4a78;font-size:13px;padding:1px 7px;border-radius:10px;font-weight:700}
+.fb{color:var(--bad);font-weight:700;background:var(--badbg);padding:1px 7px;border-radius:10px;font-size:13px}
+.fw{color:var(--warn);font-weight:700;background:var(--warnbg);padding:1px 7px;border-radius:10px;font-size:13px}
+.bt{background:#777;color:#fff;font-size:12px;padding:1px 5px;border-radius:4px}
+.rb{font-size:13px;padding:1px 7px;border-radius:10px;font-weight:700;white-space:nowrap}
+.rb-np{background:#fbe4e7;color:#b1245e} .rb-sh{background:#e6eefb;color:#2c5cb5} .rb-nd{background:#fdecd2;color:#a86406}
+.ev{font-size:13px;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;color:#fff}
+.ev-paid{background:#1f8a5a}
+.extra{background:#fbfcfd}
+.empty{padding:30px;text-align:center;color:var(--sub)}
+.note{background:var(--brandbg);border-left:4px solid var(--brand);border-radius:0 8px 8px 0;padding:10px 14px;font-size:14px;margin-bottom:10px;color:#27424a}
+.note code{background:#fff;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11.5px;color:var(--bad)}
+.phead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.act{background:#fff4e0;border:1px solid #f0d199;color:#8a5a08;border-radius:20px;padding:5px 16px;font-weight:700;font-size:15px}
+.mark{margin-left:auto;color:var(--sub);font-size:14px} .mark b{color:#9a7c00;font-size:16px}
+.btn.sm{padding:5px 12px;font-size:14px;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ワンストリーム 会員登録件数確認ツール</h1>
+  <div class="sub">最新の <code>users</code> CSV を一度読み込めば、次回以降は<b>開くだけで自動表示</b>されます（更新時のみ新しいCSVを読み込み）</div>
+
+  <div id="load" class="load">
+    <div class="big" id="srcname">CSVを読み込み中…</div>
+    <div class="hint">新しい <b>users〜.csv</b> に更新する場合は、ここにドラッグ＆ドロップ／クリックで選択してください</div>
+    <button class="btn" id="pick">CSVファイルを選択／更新</button>
+    <input type="file" id="file" accept=".csv" class="hide">
+  </div>
+
+  <div id="result" class="hide">
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="cards" id="cards"></div>
+        <div class="muted" style="margin-top:10px">※ メニューをクリックすると、その種別で会員DBが絞り込まれます。</div>
+      </aside>
+
+      <section id="dbview" class="content">
+        <h2 id="dbtitle">会員DB</h2>
+        <div id="dbbody"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="verstamp" title="">版数確認</div>
+
+<!-- 初期データ（任意）。無くてもエラーにならない。ドロップ読込後はブラウザ保存が優先される -->
+<script src="data.js" onerror="window.__CSV_MISSING__=true"></script>
+<script>
+"use strict";
+var VERSION="v5.4", VERDATE="2026-06-08";
+
+/* ===== CSVパーサ（ツール1から継承：引用符・改行・BOM対応） ===== */
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  var rows=[],row=[],field='',i=0,q=false,n=text.length;
+  while(i<n){
+    var c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i+=2;continue;} q=false;i++;continue; }
+      field+=c;i++;continue;
+    }
+    if(c==='"'){q=true;i++;continue;}
+    if(c===','){row.push(field);field='';i++;continue;}
+    if(c==='\r'){i++;continue;}
+    if(c==='\n'){row.push(field);rows.push(row);row=[];field='';i++;continue;}
+    field+=c;i++;
+  }
+  if(field!==''||row.length){row.push(field);rows.push(row);}
+  if(q){try{console.warn('[parseCSV] 引用符が閉じられないままEOF。CSV破損の可能性。');}catch(_){}}
+  return rows;
+}
+
+/* ===== データ保持 ===== */
+var RECORDS=[]; // {tags:[], ym:"YYYY-MM", isTest:bool}
+
+var LS_KEY="onestream_member_csv_v1";
+function ingest(text, sourceLabel, csvName, fromCache){
+  var rows=parseCSV(text);
+  if(rows.length<2){ setLoad("CSVにデータ行がありません。","err"); return; }
+  var header=rows[0].map(function(s){return (s||'').trim();});
+  var idxGroup=header.indexOf('所属グループ');
+  var idxName =header.indexOf('名前');
+  var idxJoin =header.indexOf('加入日');
+  if(idxGroup<0||idxJoin<0){ setLoad("想定列（所属グループ／加入日）が見つかりません。","err"); return; }
+
+  /* ツール3用：RAW（header/hidx/data）を構築（cell()/parentOf()が参照） */
+  var hidx={}; header.forEach(function(c,i){hidx[c]=i;});
+  var data=rows.slice(1).filter(function(r){return r.some(function(c){return c&&c.trim()!=='';});});
+  RAW={header:header,hidx:hidx,data:data};
+  t3rendered=false;
+
+  RECORDS=rows.slice(1)
+    .filter(function(r){return r.some(function(c){return c&&c.trim()!=='';});})
+    .map(function(r){
+      var g=(r[idxGroup]||'');
+      var nm=(idxName>=0?r[idxName]:'')||'';
+      var tags=g.split(';').map(function(s){return s.trim();}).filter(Boolean);
+      var isTest=g.indexOf('テスト会員')>=0 || /【テスト|【ﾃｽﾄ/.test(nm);
+      return {tags:tags, ym:parseYM(r[idxJoin]||''), isTest:isTest};
+    });
+  setLoad(sourceLabel+"（全 "+RECORDS.length+" 件）","ok");
+  render();
+  if(!fromCache) saveCache(text, csvName||"");
+}
+
+/* 読み込んだCSVをブラウザに保存（次回オープン時に自動復元） */
+function saveCache(text, name){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({text:text, name:name, at:new Date().toISOString()})); }catch(e){}
+}
+function loadCache(){
+  try{ var s=localStorage.getItem(LS_KEY); return s?JSON.parse(s):null; }catch(e){ return null; }
+}
+
+function parseYM(s){
+  var m=s.match(/(\d{4})年\s*(\d{1,2})月/);
+  if(!m) return "不明";
+  return m[1]+"-"+("0"+m[2]).slice(-2);
+}
+
+/* 会員種別の表示順・ラベル */
+var TYPE_DEFS=[
+  {key:"A0", label:'<span class="codetag" title="管理用タグ">管理コード：A0</span> 雑誌定期購読', note:"雑誌購読のみの件数", match:function(t){return t.indexOf("A0")>=0;}},
+  {key:"A1", label:'<span class="codetag" title="管理用タグ">管理コード：A1</span> 管理者会員',   note:"デジタルプランの契約数", match:function(t){return t.indexOf("A1管理者")>=0;}},
+  {key:"A2", label:'<span class="codetag" title="管理用タグ">管理コード：A2</span> デジタル会員', note:"管理者会員から招待されて登録した会員の数", match:function(t){return t.indexOf("A2デジタル")>=0;}},
+  {key:"A8", label:'<span class="codetag" title="管理用タグ">管理コード：A8</span> 学生会員',     note:"", match:function(t){return t.indexOf("A8学生")>=0;}}
+];
+/* カード→会員DB絞り込み用の述語（所属グループ文字列で判定） */
+var FILTER_DEFS={
+  "all":{label:"全会員", match:function(g){return true;}},
+  "A0":{label:"A0 雑誌定期購読", match:function(g){return g.indexOf("A0")>=0;}},
+  "A1":{label:"A1 管理者会員", match:function(g){return g.indexOf("A1管理者")>=0;}},
+  "A2":{label:"A2 デジタル会員", match:function(g){return g.indexOf("A2デジタル")>=0;}},
+  "A8":{label:"A8 学生会員", match:function(g){return g.indexOf("A8学生")>=0;}}
+};
+
+function render(){
+  var recs=RECORDS.filter(function(r){return !r.isTest;}); /* テスト会員は常に除外 */
+  document.getElementById("result").classList.remove("hide");
+
+  /* KPI：登録総件数 ＋ 会員種別別（A0〜A8）を横並びカードに（クリックで会員DB絞り込み） */
+  var total=recs.length;
+  var certArrC=(typeof window.__STUDENT_CERT_EMAILS__!=="undefined")?(window.__STUDENT_CERT_EMAILS__||[]):null;
+  var typeCards=TYPE_DEFS.map(function(d){
+    var c=recs.filter(function(r){return r.tags.some(d.match);}).length;
+    var note=d.note||"";
+    if(d.key==="A8" && certArrC && RAW){
+      var cset={}; certArrC.forEach(function(e){cset[String(e).toLowerCase()]=1;});
+      var a8=RAW.data.filter(function(r){return !isTestRow(r)&&cell(r,'所属グループ').indexOf('A8学生')>=0;});
+      var done=a8.filter(function(r){return cset[cell(r,'メールアドレス').toLowerCase()];}).length;
+      note="学生証提出 "+done+"/"+a8.length;
+    }
+    return cardHTML("c-type",d.label,c,note,"",d.key);
+  }).join("");
+  document.getElementById("cards").innerHTML=
+    cardHTML("c-total","登録総件数",total,"テスト除く","","all")+
+    '<div class="breakdown-label">▼ 内訳（種別別）<span style="font-weight:400">※<span class="codetag">A0</span>等は管理用タグ</span></div>'+
+    typeCards;
+
+  /* 会員DB：現在の絞り込みを再描画（無ければ初期化） */
+  renderDB(currentFilter||"all");
+}
+
+function uniq(a){var o={},r=[];a.forEach(function(x){if(!o[x]){o[x]=1;r.push(x);}});return r;}
+function fmtYM(k){ if(k==="不明"||k==="-")return k; var p=k.split("-"); return p[0]+"年"+parseInt(p[1],10)+"月"; }
+function barCell(v,max){ var w=Math.round(v/max*180); return '<td><div class="barwrap"><span class="bar" style="width:'+w+'px"></span><span>'+v+'</span></div></td>'; }
+function cardHTML(cls,label,num,note,numColor,filterKey){
+  var st=numColor?' style="color:'+numColor+'"':'';
+  var fk=filterKey?(' data-filter="'+filterKey+'"'):'';
+  var clk=filterKey?' clickable':'';
+  return '<div class="card '+cls+clk+'"'+fk+'><div class="l">'+label+'</div><div class="n"'+st+'>'+num+'</div><div class="note">'+note+'</div></div>';
+}
+function tableHTML(headers,rows){
+  return '<table><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead>'+
+    '<tbody>'+rows.map(function(r){return '<tr>'+r.join('')+'</tr>';}).join('')+'</tbody></table>';
+}
+function setLoad(msg,kind){
+  var el=document.getElementById("load");
+  document.getElementById("srcname").textContent=msg;
+  el.className="load"+(kind?" "+kind:"");
+}
+
+/* ===== 自動読込（HTMLを開くだけで最新データを自動表示）=====
+   ① data.js（最新CSVから生成・同梱）を最優先 … CSVを更新してdata.jsを作り直せば「開くだけで最新」
+   ② ブラウザ保存（localStorage）… data.jsが無い場合に前回ドロップCSVを復元（file://でも動く）
+   ③ サーバー起動時は _csv_manifest.json → ディレクトリ一覧 */
+async function autoLoad(){
+  if(typeof window.__CSV_TEXT__==="string" && window.__CSV_TEXT__.length){
+    ingest(window.__CSV_TEXT__, "自動読込（最新）: "+(window.__CSV_NAME__||"data.js"), window.__CSV_NAME__);
+    return;
+  }
+  var cache=loadCache();
+  if(cache && cache.text){
+    var when=cache.at?new Date(cache.at).toLocaleString('ja-JP'):'';
+    ingest(cache.text, "自動読込（前回データ）: "+(cache.name||"")+(when?" / "+when+" 取込":""), cache.name, true);
+    return;
+  }
+  try{
+    var mres=await fetch("./_csv_manifest.json",{cache:"no-store"});
+    if(mres.ok){
+      var man=await mres.json();
+      if(man&&man.file){
+        var cr=await fetch("./"+encodeURIComponent(man.file),{cache:"no-store"});
+        if(cr.ok){ ingest(await cr.text(),"自動読込（最新）: "+man.file); return; }
+      }
+    }
+    // マニフェストが無い場合：ディレクトリ一覧から users*.csv を拾う（タイムスタンプ不明なため名前末尾を採用）
+    var dres=await fetch("./",{cache:"no-store"});
+    if(dres.ok){
+      var html=await dres.text();
+      var links=[]; var re=/href="([^"]+\.csv)"/gi, m;
+      while((m=re.exec(html))) links.push(decodeURIComponent(m[1]));
+      var csvs=links.filter(function(f){return /users/i.test(f);});
+      if(csvs.length){
+        var target=csvs[csvs.length-1];
+        var cr2=await fetch("./"+encodeURIComponent(target.replace(/^\.?\//,'')),{cache:"no-store"});
+        ingest(await cr2.text(),"自動読込: "+target+"（※最新判定はマニフェスト推奨）"); return;
+      }
+    }
+    throw new Error("no csv");
+  }catch(e){
+    setLoad("最新の users CSV をここにドラッグ＆ドロップ（またはクリックして選択）してください。次回以降は自動で読み込まれます。","err");
+  }
+}
+
+/* ===== ドラッグ&ドロップ / 選択 ===== */
+var load=document.getElementById("load"), fileInput=document.getElementById("file");
+document.getElementById("pick").addEventListener("click",function(){fileInput.click();});
+fileInput.addEventListener("change",function(e){ if(e.target.files[0]) readFile(e.target.files[0]); });
+["dragenter","dragover"].forEach(function(ev){load.addEventListener(ev,function(e){e.preventDefault();load.classList.add("hot");});});
+["dragleave","drop"].forEach(function(ev){load.addEventListener(ev,function(e){e.preventDefault();load.classList.remove("hot");});});
+load.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readFile(f); });
+function readFile(f){ var r=new FileReader(); r.onload=function(){ingest(r.result,"読込: "+f.name,f.name);}; r.readAsText(f,"UTF-8"); }
+
+/* ===================================================================== */
+/* ===== ツール3：デジタル会員（会員リスト自動抽出ツール.htmlから移植） ===== */
+/* ===================================================================== */
+var RAW=null, DUP={}, t3rendered=false;
+var DROP_COLS=['FullID','加入日','有効期限','大学卒業予定年','ParentMail','初回送付日','紹介者','IPAddress','本誌購読冊数','備考','お知らせ通知'];
+var LEFT=['メールアドレス','所属グループ','Stripe 顧客ID','所属企業・大学・組織名','所属２（部署・学科など）','住所'];
+var WIDE=['メールアドレス','所属グループ','所属企業・大学・組織名','住所'];
+var NARROW=['No','無効化済み','メール認証済み','郵便番号','電話番号','役職'];
+
+function cell(r,name){var i=RAW.hidx[name]; return i==null?'':((r[i]||'').trim());}
+function isTestRow(r){return cell(r,'所属グループ').indexOf('テスト会員')>=0 || /【テスト|【ﾃｽﾄ/.test(cell(r,'名前'));}
+function f6(r){return cell(r,'所属グループ').indexOf('デジタル会員')>=0;}
+function t6parentReady(r){ /* 親会員枠：A1管理者＋Stripeあり＋自分のParentMail=自分のメール */
+  if(cell(r,'所属グループ').indexOf('A1管理者会員')<0)return false;
+  if(cell(r,'Stripe 顧客ID')==='')return false;
+  var pm=cell(r,'ParentMail'); return pm!=='' && pm.toLowerCase()===cell(r,'メールアドレス').toLowerCase();}
+function parentOf(pm){ if(!pm)return null; var t=pm.toLowerCase();
+  for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス').toLowerCase()===t) return RAW.data[i]; } return null; }
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
+function colcls(c){var a=[]; if(LEFT.indexOf(c)>=0)a.push('lft'); if(WIDE.indexOf(c)>=0)a.push('wide'); else if(NARROW.indexOf(c)>=0)a.push('narrow'); return a.join(' ');}
+function tdCell(r,c){
+  var v=cell(r,c), inner=esc(v);
+  if(c==='メール認証済み'&&v==='') inner='<span class="fb">未認証</span>';
+  else if(c==='Stripe 顧客ID'&&v==='') inner='<span class="fw">なし</span>';
+  else if(c==='無効化済み'&&v!=='') inner='<span class="fb">'+esc(v)+'</span>';
+  else if(c==='名前'&&/【テスト|【ﾃｽﾄ/.test(v)) inner=esc(v)+' <span class="bt">TEST</span>';
+  return '<td class="'+colcls(c)+'">'+inner+'</td>';
+}
+function renderGrouped(records,KEEP,parents){
+  parents=parents||[];
+  if(!records.length && !parents.length) return '<p class="empty">デジタル会員（A2デジタル会員）はいません</p>';
+  var groups={},order=[];
+  records.forEach(function(r){
+    var pmRaw=cell(r,'ParentMail'), key=pmRaw.toLowerCase();
+    if(!(key in groups)){groups[key]={pm:pmRaw,rows:[]};order.push(key);}
+    groups[key].rows.push(r);
+  });
+  parents.forEach(function(r){
+    var key=cell(r,'メールアドレス').toLowerCase();
+    if(key && !(key in groups)){groups[key]={pm:cell(r,'メールアドレス'),rows:[]};order.push(key);}
+  });
+  function grpPaid(key){var p=parentOf(key); if(p&&cell(p,'所属グループ').indexOf('Y26入金済')>=0)return 1; var rs=groups[key].rows; for(var i=0;i<rs.length;i++){if(cell(rs[i],'所属グループ').indexOf('Y26入金済')>=0)return 1;} return 0;}
+  order.sort(function(a,b){
+    var ha=groups[a].rows.length>0?0:1, hb=groups[b].rows.length>0?0:1; if(ha!==hb)return ha-hb;
+    var ta=grpPaid(a),tb=grpPaid(b); if(ta!==tb)return tb-ta;
+    var pa=parentOf(a),pb=parentOf(b);
+    var na=pa?cell(pa,'名前'):('￿'+a), nb=pb?cell(pb,'名前'):('￿'+b); return na.localeCompare(nb,'ja');});
+  var colspan=KEEP.length+2;
+  var th='<tr><th class="chkcol">✓</th>';
+  KEEP.forEach(function(c,i){ th+='<th class="'+colcls(c)+'">'+esc(c)+'</th>';
+    if(i===0) th+='<th class="extra">区分</th>'; });
+  th+='</tr>';
+  function row(r,extraHtml,cls){
+    var tds='<td class="chkcol"><input type="checkbox" class="rk"></td>';
+    KEEP.forEach(function(c,i){ tds+=tdCell(r,c); if(i===0) tds+='<td class="extra">'+extraHtml+'</td>'; });
+    return '<tr class="'+(cls||'')+'">'+tds+'</tr>';
+  }
+  var body='';
+  order.forEach(function(key){
+    var grp=groups[key], par=parentOf(key), n=grp.rows.length;
+    if(par) body+=row(par,'<span class="role-rep">👑 代表（配下'+n+'名）</span>'+(cell(par,'所属グループ').indexOf('Y26入金済')>=0?' <span class="ev ev-paid">Y26入金済■</span>':'')+(n===0?' <span class="role-dig" style="background:#eee;color:#888">デジタル枠・今後追加見込み</span>':''),'rep');
+    else body+='<tr class="grp"><td colspan="'+colspan+'">👤 管理者会員 <span class="gmail">'+esc(grp.pm||'(ParentMail空欄)')+'</span> <span class="gwarn">※会員一覧に未登録</span> — 配下デジタル会員 '+n+'名</td></tr>';
+    grp.rows.slice().sort(function(a,b){var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);})
+      .forEach(function(r){ body+=row(r,'<span class="role-dig">デジ</span> <span class="gmail" style="font-weight:400">↑'+esc(cell(r,'ParentMail'))+'</span>'); });
+  });
+  return '<div class="tw"><table><thead>'+th+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+function t3render(){
+  if(!RAW){return;}
+  var d=RAW.data.filter(function(r){return !isTestRow(r);});
+  var KEEP=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+  var L6=d.filter(f6), L6p=d.filter(t6parentReady);
+  var note='<div class="note"><b style="color:#1f6f78">▼ 抽出条件</b><br><code>A2デジタル会員</code> を <b>ParentMailごと</b>にまとめ、各グループ先頭に<b>親＝代表（ParentMailと同じメールアドレスの会員）の情報を <span style="color:#138a86">緑の行</span></b>で表示、その下にデジタル会員（<span class="role-dig">デジ</span>）がぶら下がります。さらに <b>A1管理者会員＋Stripe顧客IDあり＋自分のメール＝ParentMail</b>（今後デジタル会員を追加し得る<b>親会員枠</b>）も配下0名で表示します。親が会員一覧に無い場合は警告。メール大小は同一視。</div>';
+  var head='<div class="phead"><span class="act">取るべきアクション：紐付け確認</span></div>';
+  document.getElementById('tool3body').innerHTML=note+head+renderGrouped(L6,KEEP,L6p);
+  t3rendered=true;
+}
+
+/* チェック分CSV出力 */
+function csvCell(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}
+function t3exportChecked(){
+  var pan=document.getElementById('tool3body');
+  var table=pan.querySelector('table'); if(!table){alert('チェックされた行がありません');return;}
+  var heads=Array.prototype.slice.call(table.querySelectorAll('thead th'))
+    .filter(function(th){return !th.classList.contains('chkcol');}).map(function(th){return th.textContent.trim();});
+  var checkedRows=Array.prototype.filter.call(table.querySelectorAll('tbody tr'),function(tr){
+    var cb=tr.querySelector('.rk'); return cb&&cb.checked;});
+  if(!checkedRows.length){alert('チェックされた行がありません');return;}
+  var lines=[heads.map(csvCell).join(',')];
+  checkedRows.forEach(function(tr){
+    var tds=Array.prototype.filter.call(tr.children,function(td){return !td.classList.contains('chkcol');});
+    lines.push(tds.map(function(td){return csvCell(td.textContent.trim());}).join(','));
+  });
+  var blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='ツール3_デジタル会員_チェック分.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+/* ===== 会員DB（カードクリックで絞り込み表示） ===== */
+var currentFilter="all";
+function renderDB(filterKey){
+  if(!RAW){return;}
+  currentFilter=filterKey||"all";
+  var def=FILTER_DEFS[currentFilter]||FILTER_DEFS["all"];
+  var COMPANY='所属企業・大学・組織名';
+  var dbtitle=document.getElementById("dbtitle");
+  var dbbody=document.getElementById("dbbody");
+  var ne=RAW.data.filter(function(r){return !isTestRow(r);});
+
+  /* === A2：親子関係をはっきり見せるグルーピング表示 === */
+  if(currentFilter==="A2"){
+    var L6=ne.filter(f6), L6p=ne.filter(t6parentReady);
+    var KEEPg=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+    dbtitle.textContent="会員DB ─ A2 デジタル会員：親子関係（"+L6.length+"件）";
+    var noteG='<div class="note" style="margin-bottom:10px"><span class="role-rep">👑 親（管理者）</span> の行の下に、その人が招待した <span class="role-dig">デジ</span>（A2デジタル会員）がぶら下がります。「↑メール」は紐づく親のメールです。</div>';
+    dbbody.innerHTML=noteG+renderGrouped(L6,KEEPg,L6p);
+    markActive(); return;
+  }
+
+  /* === A8：学生証提出フォームの回答とメール照合し「学生証提出済み」を表示 === */
+  if(currentFilter==="A8"){
+    var certArr=(typeof window.__STUDENT_CERT_EMAILS__!=="undefined")?(window.__STUDENT_CERT_EMAILS__||[]):null;
+    var certSet={}; if(certArr) certArr.forEach(function(e){certSet[String(e).toLowerCase()]=1;});
+    var KEEP8=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+    var rows8=ne.filter(function(r){return cell(r,'所属グループ').indexOf('A8学生')>=0;})
+      .sort(function(a,b){var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);});
+    var done=certArr?rows8.filter(function(r){return certSet[cell(r,'メールアドレス').toLowerCase()];}).length:0;
+    dbtitle.textContent="会員DB ─ A8 学生会員（"+rows8.length+"件）"+(certArr?"／学生証提出 "+done+"/"+rows8.length:"");
+    var note8 = certArr
+      ? '<div class="note" style="margin-bottom:10px">学生証提出フォームの回答と<b>メールアドレスで照合</b>。<span class="cert-ok">🎓 提出済み</span> ／ <span class="cert-no">未提出</span>'+(window.__STUDENT_CERT_AT__?'（照合: '+window.__STUDENT_CERT_AT__+'）':'')+'</div>'
+      : '<div class="note" style="margin-bottom:10px;border-left-color:#b9770e;background:#fdf3e2">学生証フォームの照合データが未連携です（自動取得で更新されると提出状況が表示されます）。</div>';
+    var th8='<tr><th>学生証</th>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+esc(c)+'</th>';}).join('')+'</tr>';
+    var body8=rows8.map(function(r){
+      var ok=certArr&&certSet[cell(r,'メールアドレス').toLowerCase()];
+      var badge=!certArr?'<span class="cert-no">-</span>':(ok?'<span class="cert-ok">🎓 提出済み</span>':'<span class="cert-no">未提出</span>');
+      return '<tr>'+'<td>'+badge+'</td>'+KEEP8.map(function(c){return tdCell(r,c);}).join('')+'</tr>';
+    }).join('');
+    dbbody.innerHTML=note8+(rows8.length?'<div class="tw"><table><thead>'+th8+'</thead><tbody>'+body8+'</tbody></table></div>':'<p class="empty">該当する会員はいません</p>');
+    markActive(); return;
+  }
+
+  /* === 通常表示（A1は社名を先頭列に） === */
+  var KEEP=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
+  if(currentFilter==="A1" && KEEP.indexOf(COMPANY)>=0){
+    KEEP=[COMPANY].concat(KEEP.filter(function(c){return c!==COMPANY;}));
+  }
+  var rows=ne.filter(function(r){return def.match(cell(r,'所属グループ'));})
+    .sort(function(a,b){
+      if(currentFilter==="A1"){ var ca=cell(a,COMPANY),cb=cell(b,COMPANY); var cc=ca.localeCompare(cb,'ja'); if(cc!==0)return cc; }
+      var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);
+    });
+
+  dbtitle.textContent="会員DB ─ "+def.label+"（"+rows.length+"件）";
+  var tbl;
+  if(!rows.length){ tbl='<p class="empty">該当する会員はいません</p>'; }
+  else{
+    var th='<tr>'+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+esc(c)+'</th>';}).join('')+'</tr>';
+    var body=rows.map(function(r){return '<tr>'+KEEP.map(function(c){return tdCell(r,c);}).join('')+'</tr>';}).join('');
+    tbl='<div class="tw"><table><thead>'+th+'</thead><tbody>'+body+'</tbody></table></div>';
+  }
+  dbbody.innerHTML=tbl;
+  markActive();
+}
+function markActive(){
+  document.querySelectorAll('#cards .card').forEach(function(c){
+    c.classList.toggle('active', c.getAttribute('data-filter')===currentFilter);
+  });
+}
+document.getElementById("cards").addEventListener("click",function(e){
+  var card=e.target.closest('.card.clickable'); if(!card)return;
+  var key=card.getAttribute('data-filter'); if(!key)return;
+  renderDB(key);
+  document.getElementById("dbview").scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+/* 版数スタンプ */
+(function(){
+  var el=document.getElementById("verstamp");
+  el.textContent=VERSION+" / "+VERDATE;
+  el.title="会員登録件数確認.html　"+VERSION+"（"+VERDATE+"）";
+})();
+
+autoLoad();
+</script>
+</body>
+</html>

@@ -799,6 +799,7 @@
   <nav class="screen-nav">
     <button id="navWork" class="active" onclick="switchScreen('work')">発行作業</button>
     <button id="navHistory" onclick="switchScreen('history')">発行履歴</button>
+    <button id="navAnalysis" onclick="switchScreen('analysis')">会員分析</button>
   </nav>
 </div>
 
@@ -959,6 +960,11 @@
       <div class="table-scroll" id="historyContainer"></div>
     </section>
   </div>
+
+  <!-- ===== 会員分析画面（iframe で analysis.html を読み込み） ===== -->
+  <div class="screen" id="screen-analysis">
+    <iframe src="./analysis.html" id="analysisFrame" title="会員分析" style="width:100%;height:calc(100vh - 110px);min-height:600px;border:none;background:#f4f6f9;display:block;"></iframe>
+  </div>
 </main>
 
 <!-- 会員DBモーダル -->
@@ -1110,7 +1116,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0519v', date:'2026-05-19', note:'会員DBに license（購入ライセンス数）カラムを追加。①手動追加フォームに入力欄、②会員一覧にインライン編集列、③CSV取込/書き出し対応、④会員選択時に登録可能人数を自動入力、を実装。GAS の MEMBER_COLS も更新（再デプロイが必要）。'};
+  const APP_BUILD = {version:'rev.0611a', date:'2026-06-11', note:'「会員分析」タブを追加。analysis.html（会員登録件数確認ツール・軽量版）を iframe で読み込み、users.csv の取り込み→種別別KPI／管理者会員配下のデジタル会員一覧をその場で確認できる。HTMLは中身カラの状態でGitHubに置き、CSVは利用者ブラウザのlocalStorageのみに保持（GitHubへは上がらない）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1688,10 +1694,13 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   function switchScreen(s){
     document.getElementById('navWork').classList.toggle('active', s==='work');
     document.getElementById('navHistory').classList.toggle('active', s==='history');
+    document.getElementById('navAnalysis').classList.toggle('active', s==='analysis');
     document.getElementById('screen-work').classList.toggle('active', s==='work');
     document.getElementById('screen-history').classList.toggle('active', s==='history');
+    document.getElementById('screen-analysis').classList.toggle('active', s==='analysis');
     document.body.classList.toggle('bg-work', s==='work');
     document.body.classList.toggle('bg-history', s==='history');
+    document.body.classList.toggle('bg-analysis', s==='analysis');
     window.scrollTo(0,0);
     if(s==='history') renderHistory();
   }
