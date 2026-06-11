@@ -963,7 +963,7 @@
 
   <!-- ===== 会員分析画面（iframe で analysis.html を読み込み） ===== -->
   <div class="screen" id="screen-analysis">
-    <iframe src="./analysis.html?v=0611g" id="analysisFrame" title="会員分析" style="width:100%;height:calc(100vh - 110px);min-height:600px;border:none;background:#f4f6f9;display:block;"></iframe>
+    <iframe src="./analysis.html?v=0611h" id="analysisFrame" title="会員分析" style="width:100%;height:calc(100vh - 110px);border:none;background:#f4f6f9;display:block;"></iframe>
   </div>
 </main>
 
@@ -1116,7 +1116,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611g', date:'2026-06-11', note:'会員分析タブ：No列を画面通し番号（1, 2, 3...）に置き換え、列見出しも「#」に変更。OneStream管理番号で5から始まる違和感を解消。0611f の sticky 改善も継続。'};
+  const APP_BUILD = {version:'rev.0611h', date:'2026-06-11', note:'会員分析タブ：①iframe min-height削除で2重スクロール解消、②sidebar(cards)をsticky復活+影付き、③.tw横スクロール復活、④thead top をsidebar高さに動的同期、⑤A8学生会員に説明文追加。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {

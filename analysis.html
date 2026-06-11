@@ -130,7 +130,7 @@ h1{font-size:16px;margin:0 0 2px}
 .btn-link:hover{background:#f0f3f6;color:var(--bad)}
 .toggle{padding:4px 9px;font-size:11.5px;margin-bottom:8px;border-radius:5px}
 .layout{display:block !important}
-.sidebar{flex:none !important;width:100% !important;background:var(--bg) !important;padding:6px 0 8px !important;margin-bottom:8px !important}
+.sidebar{flex:none !important;width:100% !important;background:var(--bg) !important;padding:6px 0 8px !important;margin-bottom:0 !important;position:sticky !important;top:0 !important;z-index:50 !important;box-shadow:0 6px 8px -10px rgba(0,0,0,.22) !important}
 .content{flex:none !important;width:100% !important;min-width:0 !important;margin-bottom:0 !important}
 .cards{flex-direction:row;flex-wrap:wrap;gap:5px}
 .card{flex:1;min-width:108px;padding:5px 8px;text-align:center;border-top-width:3px}
@@ -165,10 +165,11 @@ thead th{font-size:12.5px}
 .role-rep,.role-dig{font-size:11px}
 .fb,.fw,.rb,.ev{font-size:11px;padding:0 6px}
 .empty{padding:20px;font-size:12.5px}
-/* スクロールコンテキストを body に明示。.tw の overflow も sticky に干渉しないよう調整 */
+/* スクロールコンテキストを body に明示 */
 html,body{height:100%;overflow-y:auto;overflow-x:hidden}
-.tw{overflow:visible !important}
-/* テーブルヘッダーを sticky 固定（スクロール時も列名見える） */
+/* .tw は横スクロール可。縦は visible で sticky が body に対して効く */
+.tw{overflow-x:auto !important;overflow-y:visible !important}
+/* テーブルヘッダーを sticky 固定（top値は JS で sidebar 高さに動的同期） */
 section table thead th,.tw thead th,table thead th{position:sticky !important;top:0 !important;z-index:40 !important;background:var(--brand) !important;color:#fff !important;font-size:12px !important}
 /* 所属グループ列：小さく＆色付きバッジ表示 */
 td .g-tag,td.lft .g-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px;margin:1px 2px 1px 0;white-space:nowrap;line-height:1.5;letter-spacing:.01em}
@@ -294,7 +295,7 @@ var TYPE_DEFS=[
   {key:"A0", label:'<span class="codetag" title="管理用タグ">管理コード：A0</span> 雑誌定期購読', note:"雑誌購読のみの件数", match:function(t){return t.indexOf("A0")>=0;}},
   {key:"A1", label:'<span class="codetag" title="管理用タグ">管理コード：A1</span> 管理者会員',   note:"デジタルプランの契約数", match:function(t){return t.indexOf("A1管理者")>=0;}},
   {key:"A2", label:'<span class="codetag" title="管理用タグ">管理コード：A2</span> デジタル会員', note:"管理者会員から招待されて登録した会員の数", match:function(t){return t.indexOf("A2デジタル")>=0;}},
-  {key:"A8", label:'<span class="codetag" title="管理用タグ">管理コード：A8</span> 学生会員',     note:"", match:function(t){return t.indexOf("A8学生")>=0;}}
+  {key:"A8", label:'<span class="codetag" title="管理用タグ">管理コード：A8</span> 学生会員',     note:"学生プランで登録された会員の数", match:function(t){return t.indexOf("A8学生")>=0;}}
 ];
 /* カード→会員DB絞り込み用の述語（所属グループ文字列で判定） */
 var FILTER_DEFS={
@@ -355,6 +356,19 @@ function clearMaster(){
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
   location.reload();
 }
+/* sidebar の実高さを測って、テーブル thead の sticky top を動的に同期 */
+function syncStickyTop(){
+  var sb=document.querySelector('.sidebar');
+  if(!sb) return;
+  var h=sb.offsetHeight;
+  if(!h) return;
+  var s=document.getElementById('stickyTopRule');
+  if(!s){s=document.createElement('style');s.id='stickyTopRule';document.head.appendChild(s);}
+  s.textContent='section table thead th,.tw thead th,table thead th{top:'+h+'px !important}';
+}
+window.addEventListener('load', syncStickyTop);
+window.addEventListener('resize', syncStickyTop);
+new MutationObserver(syncStickyTop).observe(document.body,{childList:true,subtree:true});
 
 /* ===== 自動読込（HTMLを開くだけで最新データを自動表示）=====
    ① data.js（最新CSVから生成・同梱）を最優先 … CSVを更新してdata.jsを作り直せば「開くだけで最新」
