@@ -789,7 +789,10 @@
   font-family:"BIZ UDPGothic","BIZ UDP Gothic","Yu Gothic UI","Meiryo",sans-serif;
   color:var(--ana-ink); font-size:12px; line-height:1.5;
 }
-#screen-analysis{height:calc(100vh - 110px);overflow-y:auto;overflow-x:hidden;background:#f4f6f9;position:relative;padding:0}
+/* 会員分析タブ表示中は body をスクロール禁止にして、screen-analysis のみがスクロール */
+body.analysis-active{height:100vh;overflow:hidden}
+#screen-analysis{background:#f4f6f9;position:relative;padding:0}
+body.analysis-active #screen-analysis{height:calc(100vh - 110px);overflow-y:auto;overflow-x:hidden}
 #ana-root *{box-sizing:border-box}
 #ana-root .wrap{max-width:none;margin:0;padding:8px 12px 40px}
 #ana-root h1{font-size:16px;margin:0 0 2px}
@@ -1248,7 +1251,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611i', date:'2026-06-11', note:'会員分析タブを iframe から完全 embed に切替。CSS/HTML/JS を親index.htmlに直接統合（IIFE+ #ana-root スコープ）。これで単一スクロールコンテキスト・cards と thead 両方の sticky・横スクロール全て iframe の制約なく動作。'};
+  const APP_BUILD = {version:'rev.0611j', date:'2026-06-11', note:'会員分析タブ：body のスクロールが干渉して sticky cards が親ヘッダーと重なる問題を修正。switchScreen で body に analysis-active クラスを付与し、その間は body{height:100vh;overflow:hidden} で固定。screen-analysis のみがスクロールするようにし、単一スクロール化。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1833,6 +1836,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     document.body.classList.toggle('bg-work', s==='work');
     document.body.classList.toggle('bg-history', s==='history');
     document.body.classList.toggle('bg-analysis', s==='analysis');
+    document.body.classList.toggle('analysis-active', s==='analysis');
     window.scrollTo(0,0);
     if(s==='history') renderHistory();
   }
