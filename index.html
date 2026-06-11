@@ -843,9 +843,12 @@
 #ana-root thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
 #ana-root td.lft{text-align:left}
 #ana-root section table thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;z-index:40}
-/* テーブルラッパー：横スクロール可（テーブルが箱の中で完結）、縦はvisibleで sticky thead を body スクロールに効かせる */
-#ana-root .tw{overflow-x:auto;overflow-y:visible;border:1px solid var(--ana-line);border-radius:8px;background:#fff;max-width:100%}
-#ana-root .tw table{white-space:nowrap}
+/* テーブルラッパー：overflow を一切持たないことで、内側 thead の position:sticky を body スクロールに対して動作させる。
+   .tw に overflow-x:auto を入れると .tw がスクロールコンテナになり、thead がテーブル下端で打ち止めになる現象が出るため不可。
+   テーブルは width:100% でセル内テキストを折り返して縦長になるのを許容する。 */
+#ana-root .tw{overflow:visible;border:1px solid var(--ana-line);border-radius:8px;background:#fff}
+#ana-root .tw table{table-layout:auto;width:100%}
+#ana-root .tw td,#ana-root .tw th{white-space:normal;word-break:break-word;overflow-wrap:anywhere}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{position:sticky;top:0;background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px;z-index:40}
 #ana-root .tw th.wide,#ana-root .tw td.wide{white-space:normal;min-width:140px;max-width:220px}
@@ -1249,7 +1252,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611p', date:'2026-06-11', note:'会員分析タブ：①カードクリック時の scrollIntoView を削除（勝手にスクロールしないように）。②thead sticky を th だけでなく tr にも適用（ブラウザのテーブル sticky 実装差を吸収）。'};
+  const APP_BUILD = {version:'rev.0611q', date:'2026-06-11', note:'会員分析タブ：根本対応。.tw の overflow を完全に visible にして、thead sticky を body スクロールに対して動作させる。テーブルは width:100% でセル内折返し許容（長文は複数行）。これで横スクロールバーも消えて thead がカード直下に正しく貼り付く。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
