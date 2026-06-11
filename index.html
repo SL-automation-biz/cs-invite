@@ -1249,7 +1249,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611n', date:'2026-06-11', note:'会員分析タブ：.tw に overflow-x:auto を戻してテーブルを箱に収める（rev.0611m で外したらテーブルがsidebar 右に飛び出してカードの脇にデータが見えていた）。縦は overflow-y:visible のままで thead sticky を body スクロールに対して機能させる。'};
+  const APP_BUILD = {version:'rev.0611p', date:'2026-06-11', note:'会員分析タブ：①カードクリック時の scrollIntoView を削除（勝手にスクロールしないように）。②thead sticky を th だけでなく tr にも適用（ブラウザのテーブル sticky 実装差を吸収）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2653,18 +2653,21 @@ function clearMaster(){
 }
 window.anaClearMaster = clearMaster;
 
-/* 2段 sticky の高さを動的に同期：親ヘッダー → cards → thead */
+/* 2段 sticky の高さを動的に同期：親ヘッダー → cards(+note) → thead
+   sidebar が幅広く色付き bar として visible なので、その offsetHeight で thead 位置を確定 */
 function syncStickyTop(){
   var sb=document.querySelector('#ana-root .sidebar');
   if(!sb) return;
   var sH=sb.offsetHeight;
   if(!sH) return;  /* タブ非表示時は0なので無視 */
   var topbarH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 96;
-  /* thead の位置：親ヘッダー + cards の下 */
   var theadTop=topbarH+sH;
   var s=document.getElementById('anaStickyTopRule');
   if(!s){s=document.createElement('style');s.id='anaStickyTopRule';document.head.appendChild(s);}
-  s.textContent='#ana-root section table thead th,#ana-root .tw thead th,#ana-root thead th{top:'+theadTop+'px !important}';
+  /* th と tr の両方に top を設定（ブラウザ差吸収） */
+  s.textContent=
+    '#ana-root .tw thead th{top:'+theadTop+'px !important}'+
+    '#ana-root .tw thead tr{top:'+theadTop+'px !important}';
 }
 window.anaSyncStickyTop = syncStickyTop;
 window.addEventListener('load', function(){ syncStickyTop(); setTimeout(syncStickyTop, 100); });
@@ -2849,7 +2852,7 @@ function initAnalysis(){
     var card=e.target.closest('.card.clickable'); if(!card)return;
     var key=card.getAttribute('data-filter'); if(!key)return;
     renderDB(key);
-    document.getElementById("dbview").scrollIntoView({behavior:'smooth',block:'start'});
+    /* 自動スクロールはユーザー意図に反するので削除（rev.0611p） */
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
