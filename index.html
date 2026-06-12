@@ -1268,7 +1268,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0611aa', date:'2026-06-11', note:'発行用DB状態列の見た目を改善：3状態ともセルいっぱいのボタン風に統一（＋DB追加＝ブランド色／追加済＝グレー押下済み風／入金待ち＝赤）。一括取り込みボタン「📥 入金済みA1管理者を…」は行ごと操作に置き換えたため削除（関連コードごと）。'};
+  const APP_BUILD = {version:'rev.0612a', date:'2026-06-12', note:'会員DBモーダルのライセンス数を数値input（スピナー）からプルダウンに変更。スピナーの上下ボタンが小さすぎて操作しづらいため。選択肢は —（未設定）と1〜10、既存値が範囲外の場合はその値も選択肢に含めて保持。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2277,11 +2277,17 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
       <tbody>`;
     filtered.forEach(m => {
       const isIssued = issued.has((m.email||'').toLowerCase());
+      /* ライセンス数はプルダウン（数値inputのスピナーは小さすぎて操作しづらいため）。
+         未設定は「—」、既存値が1〜10の範囲外ならその値も選択肢に含めて保持する */
+      const cur = String(m.license||'');
+      let licOpts = '<option value=""'+(cur===''?' selected':'')+'>—</option>';
+      for(let i=1;i<=10;i++) licOpts += '<option value="'+i+'"'+(cur===String(i)?' selected':'')+'>'+i+'</option>';
+      if(cur!=='' && !(Number(cur)>=1 && Number(cur)<=10)) licOpts += '<option value="'+escapeHtml(cur)+'" selected>'+escapeHtml(cur)+'</option>';
       html += `<tr>
         <td class="text-left">${escapeHtml(m.name)}${isIssued?' <span class="member-pick-badge">発行済</span>':''}</td>
         <td class="text-left">${escapeHtml(m.company||'')}</td>
         <td class="text-left" style="font-size:11px;">${escapeHtml(m.email)}</td>
-        <td><input type="number" min="1" value="${escapeHtml(m.license||'')}" onchange="updateMemberLicense('${m.id}', this.value)" style="width:100%;box-sizing:border-box;padding:3px 4px;border:1px solid var(--border);border-radius:3px;font-size:11px;text-align:center;font-family:inherit;" placeholder="—"></td>
+        <td><select onchange="updateMemberLicense('${m.id}', this.value)" style="width:100%;box-sizing:border-box;padding:5px 4px;border:1px solid var(--border);border-radius:3px;font-size:12px;text-align:center;font-family:inherit;cursor:pointer;background:#fff;">${licOpts}</select></td>
         <td>
           <div class="row-actions">
             <button onclick="selectMember('${m.id}')">選択</button>
