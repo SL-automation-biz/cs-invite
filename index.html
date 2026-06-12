@@ -1304,7 +1304,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612h', date:'2026-06-12', note:'A1ビューの列順を修正：#（No）をテーブル先頭側（発行用DBの直後）に。従来は会社名を先頭に出す処理で # が中央に押し出されていた。並び順は従来どおり会社名→No昇順のまま。'};
+  const APP_BUILD = {version:'rev.0612i', date:'2026-06-12', note:'users・payment両方のCSV欄に「取込: 日時（担当者名）」を常時表示。担当者名は手動読込時は設定のstaffName、共有マスター経由は読み込んだ人のstaffNameを引き継ぐ。localStorageキャッシュにもbyを保存。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2224,6 +2224,8 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   }
   window.csInviteFetchCsv = function(cb){ fetchSharedCsv_('csv', cb); };
   window.csInviteFetchPay = function(cb){ fetchSharedCsv_('pay', cb); };
+  /* 会員分析タブ向け：設定の担当者名（CSVアップロード者の表示用） */
+  window.csInviteStaffName = function(){ return (SETTINGS && SETTINGS.staffName) || ''; };
   /* 会員分析タブ向け：読み込んだCSVを共有マスターとしてGASへアップロード */
   window.csInvitePushCsv = function(name, text){
     pushTo_({csvMaster: {name: name||'', text: text||'', at: Date.now(), by: (SETTINGS && SETTINGS.staffName) || ''}});
@@ -2681,7 +2683,7 @@ function parseCSV(text){
 var RECORDS=[];
 var LS_KEY="onestream_member_csv_v1";
 
-function ingest(text, sourceLabel, csvName, fromCache){
+function ingest(text, sourceLabel, csvName, fromCache, info){
   var rows=parseCSV(text);
   if(rows.length<2){ setLoad("CSVにデータ行がありません。","err"); return; }
   var header=rows[0].map(function(s){return (s||'').trim();});
@@ -2703,18 +2705,26 @@ function ingest(text, sourceLabel, csvName, fromCache){
       var isTest=g.indexOf('テスト会員')>=0 || /【テスト|【ﾃｽﾄ/.test(nm);
       return {tags:tags, ym:parseYM(r[idxJoin]||''), isTest:isTest};
     });
-  setLoad('📌 <b>マスター保存中</b>：'+escapeHtmlSimple(csvName||sourceLabel)+'（全 '+RECORDS.length+' 件）<button class="btn-link" onclick="anaClearMaster()" title="保存されたマスターCSVを削除">マスターをクリア</button>',"ok");
+  setLoad('📌 <b>マスター保存中</b>：'+escapeHtmlSimple(csvName||sourceLabel)+'（全 '+RECORDS.length+' 件）'+csvInfoLabel(info)+'<button class="btn-link" onclick="anaClearMaster()" title="保存されたマスターCSVを削除">マスターをクリア</button>',"ok");
   render();
   if(!fromCache){
-    saveCache(text, csvName||"");
+    saveCache(text, csvName||"", info&&info.by?info.by:"");
     /* 手動で読み込んだCSVは共有マスターとしてGASへもアップロード
        （他のメンバーは次回起動時に自動取得できる） */
     if(typeof window.csInvitePushCsv==='function') window.csInvitePushCsv(csvName||'', text);
   }
 }
 
-function saveCache(text, name){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify({text:text, name:name, at:new Date().toISOString()})); }catch(e){}
+/* 取込日時・担当者の表示ラベル（users／payment 共通） */
+function csvInfoLabel(info){
+  if(!info||!info.at) return '';
+  var d=new Date(info.at);
+  if(isNaN(d.getTime())) return '';
+  return '<span style="color:#5b6675;font-weight:400">｜取込: '+escapeHtmlSimple(d.toLocaleString('ja-JP'))+(info.by?'（'+escapeHtmlSimple(info.by)+'）':'')+'</span>';
+}
+
+function saveCache(text, name, by){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({text:text, name:name, by:by||'', at:new Date().toISOString()})); }catch(e){}
 }
 function loadCache(){
   try{ var s=localStorage.getItem(LS_KEY); return s?JSON.parse(s):null; }catch(e){ return null; }
@@ -2763,7 +2773,7 @@ function licenseForDb(em){
   var dl=digitalLicense(em);
   return (dl!=null&&dl>1)?String(dl-1):'';
 }
-function ingestPay(text, name, fromCache){
+function ingestPay(text, name, fromCache, info){
   var rows=parseCSV(text);
   if(rows.length<2){ alert('取引CSVにデータ行がありません。'); return; }
   var header=rows[0].map(function(s){return (s||'').trim();});
@@ -2780,16 +2790,17 @@ function ingestPay(text, name, fromCache){
     (PAYIDX[em]=PAYIDX[em]||[]).push(r);
   });
   var el=document.getElementById('paysrc');
-  if(el)el.innerHTML='✓ '+escapeHtmlSimple(name||'')+'（'+data.length+'件）';
+  if(el)el.innerHTML='✓ '+escapeHtmlSimple(name||'')+'（'+data.length+'件）'+csvInfoLabel(info);
   var pl=document.getElementById('payload'); if(pl)pl.classList.add('ok');
   if(!fromCache){
-    try{ localStorage.setItem(LS_PAY, JSON.stringify({text:text,name:name||'',at:new Date().toISOString()})); }catch(e){}
+    var by=(info&&info.by)||'';
+    try{ localStorage.setItem(LS_PAY, JSON.stringify({text:text,name:name||'',by:by,at:new Date().toISOString()})); }catch(e){}
     if(typeof window.csInvitePushPay==='function') window.csInvitePushPay(name||'', text);
   }
   if(RAW) renderDB(currentFilter);  /* 状態列を payment 込みで再評価 */
 }
 function autoLoadPay(){
-  try{ var s=localStorage.getItem(LS_PAY); if(s){ var c=JSON.parse(s); if(c&&c.text) ingestPay(c.text, c.name, true); } }catch(e){}
+  try{ var s=localStorage.getItem(LS_PAY); if(s){ var c=JSON.parse(s); if(c&&c.text) ingestPay(c.text, c.name, true, {at:c.at, by:c.by||''}); } }catch(e){}
 }
 /* 共有 payment マスターとの同期（users と同じ仕組み） */
 window.anaOnPayMeta=function(meta){
@@ -2800,8 +2811,8 @@ window.anaOnPayMeta=function(meta){
   if(typeof window.csInviteFetchPay!=='function')return;
   window.csInviteFetchPay(function(d){
     if(!(d&&d.ok&&d.payText))return;
-    ingestPay(d.payText, meta.name||'', true);
-    try{ localStorage.setItem(LS_PAY, JSON.stringify({text:d.payText,name:meta.name||'',at:new Date(Number(meta.at)).toISOString()})); }catch(e){}
+    ingestPay(d.payText, meta.name||'', true, {at:Number(meta.at), by:meta.by||''});
+    try{ localStorage.setItem(LS_PAY, JSON.stringify({text:d.payText,name:meta.name||'',by:meta.by||'',at:new Date(Number(meta.at)).toISOString()})); }catch(e){}
   });
 };
 if(window.__payMeta) window.anaOnPayMeta(window.__payMeta);
@@ -2928,8 +2939,7 @@ window.addEventListener('resize', syncStickyTop);
 async function autoLoad(){
   var cache=loadCache();
   if(cache && cache.text){
-    var when=cache.at?new Date(cache.at).toLocaleString('ja-JP'):'';
-    ingest(cache.text, "自動読込（前回データ）: "+(cache.name||"")+(when?" / "+when+" 取込":""), cache.name, true);
+    ingest(cache.text, "自動読込（前回データ）: "+(cache.name||""), cache.name, true, {at:cache.at, by:cache.by||''});
     return;
   }
   setLoad("最新の users CSV をここにドラッグ＆ドロップ（またはクリックして選択）してください。次回以降は自動で読み込まれます。","err");
@@ -2946,10 +2956,9 @@ window.anaOnCsvMeta=function(meta){
   if(typeof window.csInviteFetchCsv!=='function')return;
   window.csInviteFetchCsv(function(d){
     if(!(d&&d.ok&&d.csvText))return;
-    var when=new Date(Number(meta.at)).toLocaleString('ja-JP');
-    ingest(d.csvText, '共有マスター: '+(meta.name||'')+(meta.by?' / '+meta.by+' 取込':'')+' / '+when, meta.name||'', true);
+    ingest(d.csvText, '共有マスター: '+(meta.name||''), meta.name||'', true, {at:Number(meta.at), by:meta.by||''});
     /* ローカルにも保存。at は共有側の日時で揃える（次回比較で再DLしないように） */
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({text:d.csvText, name:meta.name||'', at:new Date(Number(meta.at)).toISOString()})); }catch(e){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({text:d.csvText, name:meta.name||'', by:meta.by||'', at:new Date(Number(meta.at)).toISOString()})); }catch(e){}
   });
 };
 /* メイン側の pullAll がこのスクリプトの初期化より先に完了していた場合に備える */
@@ -2965,7 +2974,10 @@ function initDropZone(){
   ["dragleave","drop"].forEach(function(ev){load.addEventListener(ev,function(e){e.preventDefault();load.classList.remove("hot");});});
   load.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readFile(f); });
 }
-function readFile(f){ var r=new FileReader(); r.onload=function(){ingest(r.result,"読込: "+f.name,f.name);}; r.readAsText(f,"UTF-8"); }
+function readFile(f){ var r=new FileReader(); r.onload=function(){
+  var by=(typeof window.csInviteStaffName==='function')?window.csInviteStaffName():'';
+  ingest(r.result,"読込: "+f.name,f.name,false,{at:Date.now(), by:by});
+}; r.readAsText(f,"UTF-8"); }
 function initPayDrop(){
   var pl=document.getElementById("payload"), fi=document.getElementById("payfile");
   if(!pl||!fi) return;
@@ -2975,7 +2987,10 @@ function initPayDrop(){
   ["dragleave","drop"].forEach(function(ev){pl.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();pl.classList.remove("hot");});});
   pl.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readPayFile(f); });
 }
-function readPayFile(f){ var r=new FileReader(); r.onload=function(){ingestPay(r.result,f.name,false);}; r.readAsText(f,"UTF-8"); }
+function readPayFile(f){ var r=new FileReader(); r.onload=function(){
+  var by=(typeof window.csInviteStaffName==='function')?window.csInviteStaffName():'';
+  ingestPay(r.result,f.name,false,{at:Date.now(), by:by});
+}; r.readAsText(f,"UTF-8"); }
 
 /* ===== ツール3 / 会員DB ===== */
 var RAW=null;
