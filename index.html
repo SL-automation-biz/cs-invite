@@ -1291,7 +1291,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612c', date:'2026-06-12', note:'会員情報まとめビューを追加。セルクリックメニューに「👤 この会員の情報をまとめて見る」を追加し、ポップアップで発行用DB登録状態（未登録なら追加ボタン付き）・招待発行履歴・会員CSV全項目を1画面表示。将来の問い合わせ推測→マニュアル誘導はこのビューへのセクション追加で拡張予定。'};
+  const APP_BUILD = {version:'rev.0612d', date:'2026-06-12', note:'①絞込検索の安定化：テーブル列幅を初回実測値で固定（行の増減で列幅が揺れてグニャグニャ動いていたのを解消）＋入力に180msディレイで全行再計算を抑制。②会員情報まとめビューの発行用DB状態・招待発行履歴をA1管理者会員のみ表示に限定（招待発行が必要なのは管理者会員だけのため）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2759,6 +2759,16 @@ function buildFloatHeads(){
       tw.addEventListener('scroll', function(){ fh.firstElementChild.scrollLeft=tw.scrollLeft; }, {passive:true});
     }
     var holder=fh.firstElementChild;
+    /* 実テーブルの列幅を初回実測値で固定（絞込で行の表示が変わっても列幅が揺れないように）。
+       自動レイアウトのままだと行の増減のたびに列幅が再計算され、画面がグニャグニャ動く */
+    if(!table.dataset.fixedCols){
+      var fths=table.tHead.rows[0].cells, fws=[];
+      for(var k=0;k<fths.length;k++) fws.push(fths[k].getBoundingClientRect().width);
+      table.style.width=table.getBoundingClientRect().width+'px';
+      for(var k2=0;k2<fths.length;k2++) fths[k2].style.width=fws[k2]+'px';
+      table.style.tableLayout='fixed';
+      table.dataset.fixedCols='1';
+    }
     var clone=table.cloneNode(false);
     clone.appendChild(table.tHead.cloneNode(true));
     /* 列幅・全体幅を実テーブルに合わせる（table-layout:fixed で確定させる） */
@@ -2872,22 +2882,25 @@ function showMemberPopup(em){
   var name=cell(row,'名前'), comp=cell(row,'所属企業・大学・組織名'), g=cell(row,'所属グループ');
   document.getElementById('anaMemName').textContent='👤 '+(name||em)+(comp?'（'+comp+'）':'');
   var html='';
-  /* 発行用DB状態 */
-  var inDb=(typeof window.csInviteMemberEmails==='function')&&window.csInviteMemberEmails().has(em.toLowerCase());
-  html+='<div style="margin:2px 0 4px">';
-  if(inDb) html+='<span class="dbst-ok" style="display:inline-block;width:auto;padding:6px 16px">✓ 発行用会員DBに登録済み</span>';
-  else if(g.indexOf('A1管理者')>=0&&g.indexOf('入金済')>=0) html+='<button class="dbst-add" style="display:inline-block;width:auto;padding:6px 16px" data-email="'+esc(em)+'">＋ 発行用会員DBへ追加</button>';
-  else if(g.indexOf('A1管理者')>=0) html+='<span class="dbst-wait" style="display:inline-block;width:auto;padding:6px 16px">入金待ち（発行用DB対象だが未入金）</span>';
-  html+='</div>';
-  /* 招待発行履歴（メインツールの発行記録から） */
-  var recs=(typeof window.csInviteRecordsFor==='function')?window.csInviteRecordsFor(em):[];
-  html+='<div class="anamem-sec">📨 招待発行履歴（'+recs.length+'件）</div>';
-  if(recs.length){
-    html+='<table class="anamem-tbl">'+recs.map(function(rc){
-      return '<tr><th>'+esc(rc.date)+'</th><td style="width:90px">'+esc(rc.status)+'</td><td'+(rc.memo?'':' class="empty-v"')+'>'+(rc.memo?esc(rc.memo):'—')+'</td></tr>';
-    }).join('')+'</table>';
-  }else{
-    html+='<div style="color:#8392a5;font-size:12px">このメールアドレス宛の発行履歴はありません</div>';
+  /* 発行用DB状態・招待発行履歴は A1管理者会員のみ表示（招待発行が必要なのは管理者会員だけのため） */
+  var isAdmin=g.indexOf('A1管理者')>=0;
+  if(isAdmin){
+    var inDb=(typeof window.csInviteMemberEmails==='function')&&window.csInviteMemberEmails().has(em.toLowerCase());
+    html+='<div style="margin:2px 0 4px">';
+    if(inDb) html+='<span class="dbst-ok" style="display:inline-block;width:auto;padding:6px 16px">✓ 発行用会員DBに登録済み</span>';
+    else if(g.indexOf('入金済')>=0) html+='<button class="dbst-add" style="display:inline-block;width:auto;padding:6px 16px" data-email="'+esc(em)+'">＋ 発行用会員DBへ追加</button>';
+    else html+='<span class="dbst-wait" style="display:inline-block;width:auto;padding:6px 16px">入金待ち（発行用DB対象だが未入金）</span>';
+    html+='</div>';
+    /* 招待発行履歴（メインツールの発行記録から） */
+    var recs=(typeof window.csInviteRecordsFor==='function')?window.csInviteRecordsFor(em):[];
+    html+='<div class="anamem-sec">📨 招待発行履歴（'+recs.length+'件）</div>';
+    if(recs.length){
+      html+='<table class="anamem-tbl">'+recs.map(function(rc){
+        return '<tr><th>'+esc(rc.date)+'</th><td style="width:90px">'+esc(rc.status)+'</td><td'+(rc.memo?'':' class="empty-v"')+'>'+(rc.memo?esc(rc.memo):'—')+'</td></tr>';
+      }).join('')+'</table>';
+    }else{
+      html+='<div style="color:#8392a5;font-size:12px">このメールアドレス宛の発行履歴はありません</div>';
+    }
   }
   /* 会員CSV全項目 */
   html+='<div class="anamem-sec">📋 会員CSV 全項目</div><table class="anamem-tbl">';
@@ -3119,11 +3132,17 @@ function initAnalysis(){
   document.addEventListener('click', function(e){
     if(!e.target.closest('.ana-cellmenu') && !e.target.closest('#dbbody')) hideCellMenu();
   });
-  /* 列絞込入力：実テーブル／固定クローンのどちらの入力欄でも動作し、相互に値を同期 */
+  /* 列絞込入力：実テーブル／固定クローンのどちらの入力欄でも動作し、相互に値を同期。
+     1文字ごとの全行再計算は重くカクつくため 180ms のディレイでまとめて適用 */
+  var fltTimer=null;
   document.getElementById('dbbody').addEventListener('input', function(e){
     if(!e.target.classList.contains('cflt'))return;
     var realTable=realTableFor(e.target); if(!realTable)return;
-    setColFilter(realTable, e.target.getAttribute('data-c'), e.target.value, e.target);
+    var c=e.target.getAttribute('data-c'), v=e.target.value, el=e.target;
+    clearTimeout(fltTimer);
+    fltTimer=setTimeout(function(){
+      if(document.contains(realTable)) setColFilter(realTable, c, v, el);
+    }, 180);
   });
   /* 会員情報ポップアップ内の「＋ 発行用会員DBへ追加」 */
   document.getElementById('anaMemBody').addEventListener('click', function(e){
