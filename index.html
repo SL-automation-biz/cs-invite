@@ -1304,7 +1304,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612f', date:'2026-06-12', note:'取引CSV（payment）連携を追加。①paymentドロップ欄（users同様にGAS共有・シート「取引CSVマスター」）、②A1状態列をタグ×Stripe決済のクロスチェックに精緻化（⚡入金確認タグ未付与／⚠タグのみ）、③まとめビューに決済履歴セクション、④DB追加時に商品名からライセンス数を自動補完（Aセット=3/B=5/D=15/特別=デジタルN名→N、登録値はN−1のデジタル会員数）。テスト決済（55円・決済テスト用・A9）は判定から除外。要GAS再デプロイ。'};
+  const APP_BUILD = {version:'rev.0612g', date:'2026-06-12', note:'⚡入金確認・DB追加のツールチップを運用実態に合わせて更新。Y26入金済タグはStripe→OneStreamワークフローで自動付与されるため通常⚡は出ない。出た場合の確認観点（CSV鮮度ズレ／ワークフロー障害／決済メールと会員メールの不一致）を明記。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -3223,7 +3223,7 @@ function renderDB(filterKey){
     if(PAYIDX){
       /* payment読込済み：タグ×Stripe決済のクロスチェック（仕様書踏襲：タグ単独は要確認扱い） */
       var net=stripeNetPaid(em);
-      if(!tagPaid && net>=1) return '<td class="dbst"><button class="dbst-add dbst-flash" data-email="'+esc(em)+'" title="Stripe決済は確認済みですが、入金済タグが未付与です。タグ付与漏れの可能性があります">⚡ 入金確認・DB追加</button></td>';
+      if(!tagPaid && net>=1) return '<td class="dbst"><button class="dbst-add dbst-flash" data-email="'+esc(em)+'" title="Stripe決済は確認済みですが入金済タグがありません。タグはOneStreamのワークフローが自動付与するため、通常この表示は出ません。出た場合は ①CSVの鮮度ズレ（usersとpaymentのDL時点の差）②ワークフローの障害 ③決済メールと会員メールの不一致 を確認してください">⚡ 入金確認・DB追加</button></td>';
       if(tagPaid && net<1 && !sBetsu) return '<td class="dbst"><button class="dbst-add dbst-warn2" data-email="'+esc(em)+'" title="入金済タグはありますがStripe決済記録がありません（請求書・銀行振込なら正常）">⚠ タグのみ・DB追加</button></td>';
       if(tagPaid || net>=1) return '<td class="dbst"><button class="dbst-add" data-email="'+esc(em)+'">＋ DB追加</button></td>';
       return '<td class="dbst"><span class="dbst-wait">入金待ち</span></td>';
