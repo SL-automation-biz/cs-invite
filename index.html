@@ -857,6 +857,12 @@
 #ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:#fff;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
+/* 会員情報まとめビュー（ポップアップ）内の縦テーブル */
+#ana-root .anamem-sec{font-weight:700;color:var(--ana-brand);margin:14px 0 6px;font-size:13px}
+#ana-root .anamem-tbl{border-collapse:collapse;width:100%;font-size:12.5px}
+#ana-root .anamem-tbl th{background:#eef3f5;border:1px solid var(--ana-line);padding:5px 8px;text-align:left;width:170px;color:#445;font-weight:600;vertical-align:top;white-space:nowrap}
+#ana-root .anamem-tbl td{border:1px solid var(--ana-line);padding:5px 8px;text-align:left;word-break:break-word}
+#ana-root .anamem-tbl td.empty-v{color:#b6bfc9}
 /* 列絞込行（thead 2行目）：ブランド色theadの下に薄色の入力行 */
 #ana-root .tw thead tr.fltr th,#ana-root section table thead tr.fltr th{background:#eef3f5;padding:2px 3px}
 #ana-root .cflt{width:100%;box-sizing:border-box;font-size:11px;padding:3px 4px;border:1px solid var(--ana-line);border-radius:4px;font-family:inherit;min-width:56px;background:#fff}
@@ -1124,6 +1130,14 @@
         </div>
       </div>
       <div id="verstamp" title="">版数確認</div>
+      <!-- 会員情報まとめビュー（セルメニュー「まとめて見る」から表示。#ana-root 内に置いてタグ等のスタイルを効かせる） -->
+      <div class="modal-overlay" id="anaMemberModal">
+        <div class="modal" style="max-width:660px;">
+          <h3 id="anaMemName">会員情報</h3>
+          <div id="anaMemBody" style="max-height:62vh;overflow-y:auto;"></div>
+          <div style="text-align:right;margin-top:10px;"><button class="btn btn-ghost btn-sm" onclick="document.getElementById('anaMemberModal').classList.remove('show')">閉じる</button></div>
+        </div>
+      </div>
     </div>
   </div>
 </main>
@@ -1277,7 +1291,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612b', date:'2026-06-12', note:'会員分析タブに列絞込検索とセルクリック絞り込みを追加（会員リスト抽出ツールから移植）。①各テーブルのヘッダー2行目に🔍絞込入力欄（AND・部分一致）、②セルクリックで「この内容で絞り込む／除外／解除」メニュー、③絞込中は見出しに件数表示、④固定ヘッダー側の絞込欄も実テーブルと双方向同期、⑤＋DB追加は再描画せずセル差し替えに変更（絞込保持）。'};
+  const APP_BUILD = {version:'rev.0612c', date:'2026-06-12', note:'会員情報まとめビューを追加。セルクリックメニューに「👤 この会員の情報をまとめて見る」を追加し、ポップアップで発行用DB登録状態（未登録なら追加ボタン付き）・招待発行履歴・会員CSV全項目を1画面表示。将来の問い合わせ推測→マニュアル誘導はこのビューへのセクション追加で拡張予定。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2177,6 +2191,13 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   window.csInviteMemberEmails = function(){
     return new Set(loadMembers().map(m => (m.email||'').toLowerCase()).filter(Boolean));
   };
+  /* 会員分析タブ向け：指定メールの招待発行履歴を返す（新しい順） */
+  window.csInviteRecordsFor = function(email){
+    const em=(email||'').toLowerCase(); if(!em) return [];
+    return loadRecords().filter(r => (r.email||'').toLowerCase()===em)
+      .sort((a,b) => String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||'')))
+      .map(r => ({date:r.updated_at||r.created_at||'', status:STATUS_LABEL[r.status]||r.status||'', memo:r.memo||''}));
+  };
   /* 会員分析タブ向け：1件だけ会員DBへ追加（行ごとの「＋ DB追加」ボタン用） */
   window.csInviteAddOneMember = function(c){
     if(!c || !c.email){ toast('メールアドレスがありません', true); return false; }
@@ -2840,6 +2861,45 @@ function setColFilter(realTable, ci, val, exclEl){
   });
   applyColFilters(realTable);
 }
+/* ===== 会員情報まとめビュー（ポップアップ） =====
+   発行用DB登録状態・招待発行履歴・会員CSV全項目を1画面に集約。
+   将来：問い合わせ内容の推測表示やマニュアル該当ページへのリンクもここにセクション追加で拡張する */
+function showMemberPopup(em){
+  if(!RAW||!em)return;
+  var row=null;
+  for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス')===em){row=RAW.data[i];break;} }
+  if(!row)return;
+  var name=cell(row,'名前'), comp=cell(row,'所属企業・大学・組織名'), g=cell(row,'所属グループ');
+  document.getElementById('anaMemName').textContent='👤 '+(name||em)+(comp?'（'+comp+'）':'');
+  var html='';
+  /* 発行用DB状態 */
+  var inDb=(typeof window.csInviteMemberEmails==='function')&&window.csInviteMemberEmails().has(em.toLowerCase());
+  html+='<div style="margin:2px 0 4px">';
+  if(inDb) html+='<span class="dbst-ok" style="display:inline-block;width:auto;padding:6px 16px">✓ 発行用会員DBに登録済み</span>';
+  else if(g.indexOf('A1管理者')>=0&&g.indexOf('入金済')>=0) html+='<button class="dbst-add" style="display:inline-block;width:auto;padding:6px 16px" data-email="'+esc(em)+'">＋ 発行用会員DBへ追加</button>';
+  else if(g.indexOf('A1管理者')>=0) html+='<span class="dbst-wait" style="display:inline-block;width:auto;padding:6px 16px">入金待ち（発行用DB対象だが未入金）</span>';
+  html+='</div>';
+  /* 招待発行履歴（メインツールの発行記録から） */
+  var recs=(typeof window.csInviteRecordsFor==='function')?window.csInviteRecordsFor(em):[];
+  html+='<div class="anamem-sec">📨 招待発行履歴（'+recs.length+'件）</div>';
+  if(recs.length){
+    html+='<table class="anamem-tbl">'+recs.map(function(rc){
+      return '<tr><th>'+esc(rc.date)+'</th><td style="width:90px">'+esc(rc.status)+'</td><td'+(rc.memo?'':' class="empty-v"')+'>'+(rc.memo?esc(rc.memo):'—')+'</td></tr>';
+    }).join('')+'</table>';
+  }else{
+    html+='<div style="color:#8392a5;font-size:12px">このメールアドレス宛の発行履歴はありません</div>';
+  }
+  /* 会員CSV全項目 */
+  html+='<div class="anamem-sec">📋 会員CSV 全項目</div><table class="anamem-tbl">';
+  RAW.header.forEach(function(h){
+    var v=cell(row,h);
+    var disp=(h==='所属グループ')?groupTagsHTML(v):esc(v);
+    html+='<tr><th>'+esc(h)+'</th><td'+(v?'':' class="empty-v"')+'>'+(v?disp:'—')+'</td></tr>';
+  });
+  html+='</table>';
+  document.getElementById('anaMemBody').innerHTML=html;
+  document.getElementById('anaMemberModal').classList.add('show');
+}
 function groupTagsHTML(v){
   var tags=String(v||'').split(';').map(function(s){return s.trim();}).filter(Boolean);
   return tags.map(function(t){
@@ -2893,7 +2953,7 @@ function renderGrouped(records,KEEP,parents){
   function row(r,extraHtml,cls){
     var tds='<td class="chkcol"><input type="checkbox" class="rk"></td>';
     KEEP.forEach(function(c,i){ tds+=tdCell(r,c); if(i===0) tds+='<td class="extra">'+extraHtml+'</td>'; });
-    return '<tr class="'+(cls||'')+'">'+tds+'</tr>';
+    return '<tr class="'+(cls||'')+'" data-em="'+esc(cell(r,'メールアドレス'))+'">'+tds+'</tr>';
   }
   var body='';
   order.forEach(function(key){
@@ -2932,7 +2992,7 @@ function renderDB(filterKey){
     dbtitle.textContent="会員DB ─ A8 学生会員（"+rows8.length+"件）";
     var th8='<tr>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>'+fltRowHTML(KEEP8.length);
     var body8=rows8.map(function(r,idx){
-      return '<tr>'+KEEP8.map(function(c){
+      return '<tr data-em="'+esc(cell(r,'メールアドレス'))+'">'+KEEP8.map(function(c){
         if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
         return tdCell(r,c);
       }).join('')+'</tr>';
@@ -2966,7 +3026,7 @@ function renderDB(filterKey){
   else{
     var th='<tr>'+(isA1?'<th class="dbst">発行用DB</th>':'')+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>'
       +fltRowHTML((isA1?1:0)+KEEP.length);
-    var body=rows.map(function(r,idx){return '<tr>'+(isA1?dbStatusCell(r):'')+KEEP.map(function(c){
+    var body=rows.map(function(r,idx){return '<tr data-em="'+esc(cell(r,'メールアドレス'))+'">'+(isA1?dbStatusCell(r):'')+KEEP.map(function(c){
       if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
       return tdCell(r,c);
     }).join('')+'</tr>';}).join('');
@@ -3024,11 +3084,13 @@ function initAnalysis(){
     var realTable=realTableFor(td); if(!realTable)return;
     var ci=Array.prototype.indexOf.call(tr.children,td), val=td.textContent.trim(); if(!val)return;
     var arr=Array.from(val), short=arr.length>22?arr.slice(0,22).join('')+'…':val;
+    var em=tr.getAttribute('data-em')||'';
     cellMenu.innerHTML='<div class="cm-val" title="'+esc(val)+'">「'+esc(short)+'」</div>'+
+      (em?'<button data-act="mem">👤 この会員の情報をまとめて見る</button>':'')+
       '<button data-act="inc">🔍 この内容で絞り込む</button>'+
       '<button data-act="exc">🚫 これを除外して絞り込む</button>'+
       '<button data-act="cls" style="color:#888">絞り込みを解除</button>';
-    cellMenu._table=realTable; cellMenu._ci=ci; cellMenu._val=val;
+    cellMenu._table=realTable; cellMenu._ci=ci; cellMenu._val=val; cellMenu._em=em;
     var maxL=window.scrollX+document.documentElement.clientWidth-250;
     cellMenu.style.left=Math.min(e.pageX,maxL)+'px'; cellMenu.style.top=(e.pageY+4)+'px';
     cellMenu.classList.add('show');
@@ -3036,6 +3098,7 @@ function initAnalysis(){
   cellMenu.addEventListener('click', function(e){
     var b=e.target.closest('button'); if(!b)return;
     var act=b.getAttribute('data-act'),table=cellMenu._table,ci=cellMenu._ci,val=cellMenu._val;
+    if(act==='mem'){ hideCellMenu(); showMemberPopup(cellMenu._em); return; }
     if(table && document.contains(table)){
       if(act==='cls'){
         var tw=table.closest('.tw');
@@ -3061,6 +3124,24 @@ function initAnalysis(){
     if(!e.target.classList.contains('cflt'))return;
     var realTable=realTableFor(e.target); if(!realTable)return;
     setColFilter(realTable, e.target.getAttribute('data-c'), e.target.value, e.target);
+  });
+  /* 会員情報ポップアップ内の「＋ 発行用会員DBへ追加」 */
+  document.getElementById('anaMemBody').addEventListener('click', function(e){
+    var btn=e.target.closest('.dbst-add'); if(!btn)return;
+    var em=btn.getAttribute('data-email'); if(!em||!RAW)return;
+    var row=null;
+    for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス')===em){row=RAW.data[i];break;} }
+    if(!row)return;
+    var ok=(typeof window.csInviteAddOneMember==='function')&&window.csInviteAddOneMember({
+      name:cell(row,'名前'), email:em, company:cell(row,'所属企業・大学・組織名')
+    });
+    if(ok){
+      btn.outerHTML='<span class="dbst-ok" style="display:inline-block;width:auto;padding:6px 16px">✓ 発行用会員DBに登録済み</span>';
+      /* 背後のテーブル側に同じ会員の「＋DB追加」が見えていればそれも差し替え */
+      var sel='#dbbody .dbst-add[data-email="'+(window.CSS&&CSS.escape?CSS.escape(em):em)+'"]';
+      var tbtn=null; try{ tbtn=document.querySelector(sel); }catch(_){}
+      if(tbtn) tbtn.closest('td').innerHTML='<span class="dbst-ok">✓ 追加済</span>';
+    }
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
