@@ -857,6 +857,15 @@
 #ana-root .twfh .tw{overflow:hidden;border-color:transparent;background:#fff;border-radius:0}
 #ana-root .tw th,#ana-root .tw td{border:1px solid var(--ana-line);padding:4px 6px;vertical-align:middle;text-align:center}
 #ana-root .tw thead th{background:var(--ana-brand);color:#fff;font-weight:600;font-size:12.5px}
+/* 列絞込行（thead 2行目）：ブランド色theadの下に薄色の入力行 */
+#ana-root .tw thead tr.fltr th,#ana-root section table thead tr.fltr th{background:#eef3f5;padding:2px 3px}
+#ana-root .cflt{width:100%;box-sizing:border-box;font-size:11px;padding:3px 4px;border:1px solid var(--ana-line);border-radius:4px;font-family:inherit;min-width:56px;background:#fff}
+/* セルクリック絞り込みメニュー（body直下に動的生成・sticky群より前面） */
+.ana-cellmenu{position:absolute;z-index:200;background:#fff;border:1px solid #1f6f78;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px;display:none;font-size:12.5px}
+.ana-cellmenu.show{display:block}
+.ana-cellmenu .cm-val{font-weight:700;color:#1f6f78;font-size:11px;padding:3px 10px 5px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid #dfe5ec;margin-bottom:3px}
+.ana-cellmenu button{display:block;width:100%;text-align:left;border:none;background:#fff;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:12.5px;border-radius:5px;white-space:nowrap;color:#1d2733}
+.ana-cellmenu button:hover{background:#e8f2f3}
 /* 発行用DB 状態列（A1ビュー）：3状態ともセルいっぱいのボタン風表示で統一 */
 #ana-root td.dbst{padding:3px;min-width:92px}
 #ana-root th.dbst{white-space:nowrap}
@@ -1268,7 +1277,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612a', date:'2026-06-12', note:'会員DBモーダルのライセンス数を数値input（スピナー）からプルダウンに変更。スピナーの上下ボタンが小さすぎて操作しづらいため。選択肢は —（未設定）と1〜10、既存値が範囲外の場合はその値も選択肢に含めて保持。'};
+  const APP_BUILD = {version:'rev.0612b', date:'2026-06-12', note:'会員分析タブに列絞込検索とセルクリック絞り込みを追加（会員リスト抽出ツールから移植）。①各テーブルのヘッダー2行目に🔍絞込入力欄（AND・部分一致）、②セルクリックで「この内容で絞り込む／除外／解除」メニュー、③絞込中は見出しに件数表示、④固定ヘッダー側の絞込欄も実テーブルと双方向同期、⑤＋DB追加は再描画せずセル差し替えに変更（絞込保持）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2738,6 +2747,9 @@ function buildFloatHeads(){
     for(var i=0;i<realThs.length;i++){
       cloneThs[i].style.width=realThs[i].getBoundingClientRect().width+'px';
     }
+    /* 絞込入力値を実テーブルから引き継ぐ（resize等での再構築時に消えないように） */
+    var realF=table.tHead.querySelectorAll('.cflt'), cloneF=clone.tHead.querySelectorAll('.cflt');
+    for(var j=0;j<realF.length&&j<cloneF.length;j++){ cloneF[j].value=realF[j].value; }
     holder.innerHTML='';
     holder.appendChild(clone);
     holder.scrollLeft=tw.scrollLeft;
@@ -2788,6 +2800,46 @@ function parentOf(pm){ if(!pm)return null; var t=pm.toLowerCase();
   for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス').toLowerCase()===t) return RAW.data[i]; } return null; }
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
 function colcls(c){var a=[]; if(LEFT.indexOf(c)>=0)a.push('lft'); if(WIDE.indexOf(c)>=0)a.push('wide'); else if(NARROW.indexOf(c)>=0)a.push('narrow'); return a.join(' ');}
+/* 列絞込行（thead 2行目）のHTMLを生成。skip の列indexは入力欄なし */
+function fltRowHTML(n, skip){
+  var s='<tr class="fltr">';
+  for(var i=0;i<n;i++){
+    s+=(skip&&skip.indexOf(i)>=0)?'<th></th>':'<th><input class="cflt" data-c="'+i+'" placeholder="🔍絞込"></th>';
+  }
+  return s+'</tr>';
+}
+/* 列絞込の適用（AND・部分一致・大小文字無視）。grp行（グループ見出し）は常時表示 */
+function applyColFilters(table){
+  var flts=Array.prototype.map.call(table.querySelectorAll('thead .cflt'),function(inp){return {c:+inp.getAttribute('data-c'),v:inp.value.trim().toLowerCase()};}).filter(function(f){return f.v;});
+  var vis=0;
+  Array.prototype.forEach.call(table.querySelectorAll('tbody tr'),function(tr){
+    if(tr.classList.contains('grp')){tr.style.display='';return;}
+    var show=flts.every(function(f){var td=tr.children[f.c];return td&&td.textContent.toLowerCase().indexOf(f.v)>=0;});
+    tr.style.display=show?'':'none'; if(show)vis++;
+  });
+  var dbtitle=document.getElementById('dbtitle');
+  if(dbtitle){
+    var base=dbtitle.textContent.split('｜絞込')[0];
+    dbtitle.textContent=flts.length?base+'｜絞込 '+vis+'件':base;
+  }
+}
+/* el の属するテーブルの「実体」を返す（フロートヘッダーのクローン内なら直後の .tw のテーブル） */
+function realTableFor(el){
+  var fh=el.closest('.twfh');
+  if(fh){var tw=fh.nextElementSibling;return tw?tw.querySelector('table'):null;}
+  return el.closest('table');
+}
+/* 実テーブルとクローン両方の絞込欄に値を反映して適用（exclEl は再代入しない＝入力中のカーソル保護） */
+function setColFilter(realTable, ci, val, exclEl){
+  var tw=realTable.closest('.tw');
+  var fh=(tw&&tw.previousElementSibling&&tw.previousElementSibling.classList&&tw.previousElementSibling.classList.contains('twfh'))?tw.previousElementSibling:null;
+  [realTable,fh].forEach(function(scope){
+    if(!scope)return;
+    var inp=scope.querySelector('.cflt[data-c="'+ci+'"]');
+    if(inp&&inp!==exclEl)inp.value=val;
+  });
+  applyColFilters(realTable);
+}
 function groupTagsHTML(v){
   var tags=String(v||'').split(';').map(function(s){return s.trim();}).filter(Boolean);
   return tags.map(function(t){
@@ -2837,6 +2889,7 @@ function renderGrouped(records,KEEP,parents){
   KEEP.forEach(function(c,i){ th+='<th class="'+colcls(c)+'">'+esc(c)+'</th>';
     if(i===0) th+='<th class="extra">区分</th>'; });
   th+='</tr>';
+  th+=fltRowHTML(KEEP.length+2,[0]);  /* チェック列は絞込なし */
   function row(r,extraHtml,cls){
     var tds='<td class="chkcol"><input type="checkbox" class="rk"></td>';
     KEEP.forEach(function(c,i){ tds+=tdCell(r,c); if(i===0) tds+='<td class="extra">'+extraHtml+'</td>'; });
@@ -2877,7 +2930,7 @@ function renderDB(filterKey){
     var rows8=ne.filter(function(r){return cell(r,'所属グループ').indexOf('A8学生')>=0;})
       .sort(function(a,b){var na=parseInt(cell(a,'No'),10),nb=parseInt(cell(b,'No'),10);return (isNaN(na)?1e9:na)-(isNaN(nb)?1e9:nb);});
     dbtitle.textContent="会員DB ─ A8 学生会員（"+rows8.length+"件）";
-    var th8='<tr>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var th8='<tr>'+KEEP8.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>'+fltRowHTML(KEEP8.length);
     var body8=rows8.map(function(r,idx){
       return '<tr>'+KEEP8.map(function(c){
         if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
@@ -2911,7 +2964,8 @@ function renderDB(filterKey){
   var tbl;
   if(!rows.length){ tbl='<p class="empty">該当する会員はいません</p>'; }
   else{
-    var th='<tr>'+(isA1?'<th class="dbst">発行用DB</th>':'')+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>';
+    var th='<tr>'+(isA1?'<th class="dbst">発行用DB</th>':'')+KEEP.map(function(c){return '<th class="'+colcls(c)+'">'+(c==='No'?'#':esc(c))+'</th>';}).join('')+'</tr>'
+      +fltRowHTML((isA1?1:0)+KEEP.length);
     var body=rows.map(function(r,idx){return '<tr>'+(isA1?dbStatusCell(r):'')+KEEP.map(function(c){
       if(c==='No') return '<td class="'+colcls(c)+'">'+(idx+1)+'</td>';
       return tdCell(r,c);
@@ -2938,21 +2992,75 @@ function initAnalysis(){
     /* フィルタ切替時はページ先頭に戻す（テーブル中腹のままだと位置が分かりにくいため） */
     window.scrollTo(0,0);
   });
-  /* A1ビューの行ごと「＋ DB追加」ボタン（イベントデリゲーション） */
+  /* セルクリック絞り込みメニュー（body直下に動的生成） */
+  var cellMenu=document.createElement('div');
+  cellMenu.className='ana-cellmenu';
+  document.body.appendChild(cellMenu);
+  function hideCellMenu(){cellMenu.classList.remove('show');}
+
+  /* dbbody クリック：①「＋ DB追加」ボタン ②セルクリックでメニュー表示 */
   document.getElementById('dbbody').addEventListener('click', function(e){
-    var btn=e.target.closest('.dbst-add'); if(!btn) return;
-    var em=btn.getAttribute('data-email'); if(!em || !RAW) return;
-    var row=null;
-    for(var i=0;i<RAW.data.length;i++){
-      if(cell(RAW.data[i],'メールアドレス')===em){ row=RAW.data[i]; break; }
+    var btn=e.target.closest('.dbst-add');
+    if(btn){
+      hideCellMenu();
+      var em=btn.getAttribute('data-email'); if(!em || !RAW) return;
+      var row=null;
+      for(var i=0;i<RAW.data.length;i++){
+        if(cell(RAW.data[i],'メールアドレス')===em){ row=RAW.data[i]; break; }
+      }
+      if(!row) return;
+      var ok=(typeof window.csInviteAddOneMember==='function') && window.csInviteAddOneMember({
+        name: cell(row,'名前'),
+        email: em,
+        company: cell(row,'所属企業・大学・組織名')
+      });
+      /* renderDB 再実行ではなくセル差し替え（絞込状態・スクロール位置を保持） */
+      if(ok) btn.closest('td').innerHTML='<span class="dbst-ok">✓ 追加済</span>';
+      return;
     }
-    if(!row) return;
-    var ok=(typeof window.csInviteAddOneMember==='function') && window.csInviteAddOneMember({
-      name: cell(row,'名前'),
-      email: em,
-      company: cell(row,'所属企業・大学・組織名')
-    });
-    if(ok) renderDB(currentFilter);  /* 行の表示を「✓ 追加済」に更新 */
+    if(e.target.closest('input')||e.target.closest('button'))return;
+    var td=e.target.closest('td'); if(!td||td.classList.contains('chkcol'))return;
+    var tr=td.closest('tr'); if(!tr||tr.classList.contains('grp'))return;
+    var realTable=realTableFor(td); if(!realTable)return;
+    var ci=Array.prototype.indexOf.call(tr.children,td), val=td.textContent.trim(); if(!val)return;
+    var arr=Array.from(val), short=arr.length>22?arr.slice(0,22).join('')+'…':val;
+    cellMenu.innerHTML='<div class="cm-val" title="'+esc(val)+'">「'+esc(short)+'」</div>'+
+      '<button data-act="inc">🔍 この内容で絞り込む</button>'+
+      '<button data-act="exc">🚫 これを除外して絞り込む</button>'+
+      '<button data-act="cls" style="color:#888">絞り込みを解除</button>';
+    cellMenu._table=realTable; cellMenu._ci=ci; cellMenu._val=val;
+    var maxL=window.scrollX+document.documentElement.clientWidth-250;
+    cellMenu.style.left=Math.min(e.pageX,maxL)+'px'; cellMenu.style.top=(e.pageY+4)+'px';
+    cellMenu.classList.add('show');
+  });
+  cellMenu.addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    var act=b.getAttribute('data-act'),table=cellMenu._table,ci=cellMenu._ci,val=cellMenu._val;
+    if(table && document.contains(table)){
+      if(act==='cls'){
+        var tw=table.closest('.tw');
+        var fh=(tw&&tw.previousElementSibling&&tw.previousElementSibling.classList&&tw.previousElementSibling.classList.contains('twfh'))?tw.previousElementSibling:null;
+        [table,fh].forEach(function(s){ if(s) Array.prototype.forEach.call(s.querySelectorAll('.cflt'),function(i){i.value='';}); });
+        Array.prototype.forEach.call(table.querySelectorAll('tbody tr'),function(tr){tr.style.display='';});
+        applyColFilters(table);
+      }
+      else if(act==='inc'){ setColFilter(table, ci, val); }
+      else if(act==='exc'){
+        Array.prototype.forEach.call(table.querySelectorAll('tbody tr'),function(tr){
+          var cl=tr.children[ci]; if(cl&&cl.textContent.trim()===val)tr.style.display='none';
+        });
+      }
+    }
+    hideCellMenu();
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('.ana-cellmenu') && !e.target.closest('#dbbody')) hideCellMenu();
+  });
+  /* 列絞込入力：実テーブル／固定クローンのどちらの入力欄でも動作し、相互に値を同期 */
+  document.getElementById('dbbody').addEventListener('input', function(e){
+    if(!e.target.classList.contains('cflt'))return;
+    var realTable=realTableFor(e.target); if(!realTable)return;
+    setColFilter(realTable, e.target.getAttribute('data-c'), e.target.value, e.target);
   });
   /* 版数スタンプ */
   var vs=document.getElementById("verstamp");
