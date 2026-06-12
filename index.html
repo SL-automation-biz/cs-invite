@@ -1291,7 +1291,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612d', date:'2026-06-12', note:'①絞込検索の安定化：テーブル列幅を初回実測値で固定（行の増減で列幅が揺れてグニャグニャ動いていたのを解消）＋入力に180msディレイで全行再計算を抑制。②会員情報まとめビューの発行用DB状態・招待発行履歴をA1管理者会員のみ表示に限定（招待発行が必要なのは管理者会員だけのため）。'};
+  const APP_BUILD = {version:'rev.0612e', date:'2026-06-12', note:'会員分析タブのCSVマスターをGAS（スプレッドシート「CSVマスター」シート）で共有化。誰かがCSVを読み込むと自動アップロードされ、他のメンバーは起動時の同期で共有側が新しければ自動ダウンロード。要GAS再デプロイ（csvMeta/csvText/csvMaster対応）。GAS未更新でも従来どおり動作（共有機能のみ無効）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1395,6 +1395,9 @@
         recordBuildIfNew_(d.changelog);
         refreshAll();
         setSyncStatus('ok');
+        /* 共有CSVマスターのメタ情報を会員分析タブへ連携 */
+        window.__csvMeta = d.csvMeta || null;
+        if(typeof window.anaOnCsvMeta === 'function') window.anaOnCsvMeta(window.__csvMeta);
       } else {
         fail();
       }
@@ -2191,6 +2194,23 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   window.csInviteMemberEmails = function(){
     return new Set(loadMembers().map(m => (m.email||'').toLowerCase()).filter(Boolean));
   };
+  /* 会員分析タブ向け：共有CSVマスター本体をGASから取得（JSONP・?csv=1） */
+  window.csInviteFetchCsv = function(cb){
+    if(!gasConfigured_()){ cb(null); return; }
+    const cbName = 'gasCsvCb_' + Date.now() + Math.floor(Math.random()*1000);
+    const sc = document.createElement('script');
+    let done = false;
+    function cleanup(){ try{ delete window[cbName]; }catch(e){} if(sc.parentNode) sc.parentNode.removeChild(sc); }
+    window[cbName] = function(d){ done = true; cleanup(); cb(d); };
+    sc.onerror = function(){ cleanup(); if(!done){ done = true; cb(null); } };
+    sc.src = GAS_URL + '?token=' + encodeURIComponent(GAS_TOKEN) + '&csv=1&callback=' + cbName;
+    document.body.appendChild(sc);
+    setTimeout(function(){ if(!done){ done = true; cleanup(); cb(null); } }, 20000);
+  };
+  /* 会員分析タブ向け：読み込んだCSVを共有マスターとしてGASへアップロード */
+  window.csInvitePushCsv = function(name, text){
+    pushTo_({csvMaster: {name: name||'', text: text||'', at: Date.now(), by: (SETTINGS && SETTINGS.staffName) || ''}});
+  };
   /* 会員分析タブ向け：指定メールの招待発行履歴を返す（新しい順） */
   window.csInviteRecordsFor = function(email){
     const em=(email||'').toLowerCase(); if(!em) return [];
@@ -2662,7 +2682,12 @@ function ingest(text, sourceLabel, csvName, fromCache){
     });
   setLoad('📌 <b>マスター保存中</b>：'+escapeHtmlSimple(csvName||sourceLabel)+'（全 '+RECORDS.length+' 件）<button class="btn-link" onclick="anaClearMaster()" title="保存されたマスターCSVを削除">マスターをクリア</button>',"ok");
   render();
-  if(!fromCache) saveCache(text, csvName||"");
+  if(!fromCache){
+    saveCache(text, csvName||"");
+    /* 手動で読み込んだCSVは共有マスターとしてGASへもアップロード
+       （他のメンバーは次回起動時に自動取得できる） */
+    if(typeof window.csInvitePushCsv==='function') window.csInvitePushCsv(csvName||'', text);
+  }
 }
 
 function saveCache(text, name){
@@ -2800,6 +2825,26 @@ async function autoLoad(){
   }
   setLoad("最新の users CSV をここにドラッグ＆ドロップ（またはクリックして選択）してください。次回以降は自動で読み込まれます。","err");
 }
+
+/* ===== 共有CSVマスターとの同期 =====
+   メイン側の pullAll 完了時に csvMeta（共有CSVの保存日時等）が渡される。
+   共有側がローカルより新しければ本体をダウンロードして差し替える。 */
+window.anaOnCsvMeta=function(meta){
+  if(!meta||!meta.at)return;
+  var cache=loadCache();
+  var localAt=(cache&&cache.at)?new Date(cache.at).getTime():0;
+  if(localAt>=Number(meta.at))return;  /* ローカルが同じか新しい → 何もしない */
+  if(typeof window.csInviteFetchCsv!=='function')return;
+  window.csInviteFetchCsv(function(d){
+    if(!(d&&d.ok&&d.csvText))return;
+    var when=new Date(Number(meta.at)).toLocaleString('ja-JP');
+    ingest(d.csvText, '共有マスター: '+(meta.name||'')+(meta.by?' / '+meta.by+' 取込':'')+' / '+when, meta.name||'', true);
+    /* ローカルにも保存。at は共有側の日時で揃える（次回比較で再DLしないように） */
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({text:d.csvText, name:meta.name||'', at:new Date(Number(meta.at)).toISOString()})); }catch(e){}
+  });
+};
+/* メイン側の pullAll がこのスクリプトの初期化より先に完了していた場合に備える */
+if(window.__csvMeta) window.anaOnCsvMeta(window.__csvMeta);
 
 /* ===== ドラッグ&ドロップ / 選択 ===== */
 function initDropZone(){
