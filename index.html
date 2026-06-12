@@ -877,6 +877,12 @@
 #ana-root th.dbst{white-space:nowrap}
 #ana-root .dbst-add{display:block;width:100%;box-sizing:border-box;background:var(--ana-brand);color:#fff;border:none;border-radius:6px;padding:9px 8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 #ana-root .dbst-add:hover{background:#175a62}
+/* ⚡入金確認（Stripe決済あり・タグ未付与）：緑系強調 */
+#ana-root .dbst-add.dbst-flash{background:#0e8a5f}
+#ana-root .dbst-add.dbst-flash:hover{background:#0b6f4d}
+/* ⚠タグのみ（入金済タグあり・Stripe記録なし）：オレンジ */
+#ana-root .dbst-add.dbst-warn2{background:#b9770e}
+#ana-root .dbst-add.dbst-warn2:hover{background:#96610b}
 /* 追加済：グレーの押下済みボタン風 */
 #ana-root .dbst-ok{display:block;width:100%;box-sizing:border-box;background:#e3e7eb;color:#7b8694;border-radius:6px;padding:9px 8px;font-size:11.5px;font-weight:700;text-align:center;white-space:nowrap;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
 /* 入金待ち：赤 */
@@ -1118,6 +1124,13 @@
           <button class="btn" id="pick">CSVファイルを選択／更新</button>
           <input type="file" id="file" accept=".csv" class="hide">
         </div>
+        <div id="payload" class="load" style="margin-top:6px;padding:6px 12px">
+          <div style="font-size:12px"><b>💳 取引CSV（payment）</b>：<span id="paysrc">未読込</span>
+            <button class="btn" id="paypick" style="font-size:11px;padding:2px 8px;margin-left:8px">取引CSVを選択／更新</button>
+            <input type="file" id="payfile" accept=".csv" class="hide">
+          </div>
+          <div class="hint">読み込むと入金判定の精緻化（Stripe決済との突合）・決済履歴表示・ライセンス数の自動補完が有効になります（任意）</div>
+        </div>
         <div id="result" class="hide">
           <aside class="sidebar">
             <div class="cards" id="cards"></div>
@@ -1291,7 +1304,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612e', date:'2026-06-12', note:'会員分析タブのCSVマスターをGAS（スプレッドシート「CSVマスター」シート）で共有化。誰かがCSVを読み込むと自動アップロードされ、他のメンバーは起動時の同期で共有側が新しければ自動ダウンロード。要GAS再デプロイ（csvMeta/csvText/csvMaster対応）。GAS未更新でも従来どおり動作（共有機能のみ無効）。'};
+  const APP_BUILD = {version:'rev.0612f', date:'2026-06-12', note:'取引CSV（payment）連携を追加。①paymentドロップ欄（users同様にGAS共有・シート「取引CSVマスター」）、②A1状態列をタグ×Stripe決済のクロスチェックに精緻化（⚡入金確認タグ未付与／⚠タグのみ）、③まとめビューに決済履歴セクション、④DB追加時に商品名からライセンス数を自動補完（Aセット=3/B=5/D=15/特別=デジタルN名→N、登録値はN−1のデジタル会員数）。テスト決済（55円・決済テスト用・A9）は判定から除外。要GAS再デプロイ。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1395,9 +1408,11 @@
         recordBuildIfNew_(d.changelog);
         refreshAll();
         setSyncStatus('ok');
-        /* 共有CSVマスターのメタ情報を会員分析タブへ連携 */
+        /* 共有CSVマスター（users／payment）のメタ情報を会員分析タブへ連携 */
         window.__csvMeta = d.csvMeta || null;
         if(typeof window.anaOnCsvMeta === 'function') window.anaOnCsvMeta(window.__csvMeta);
+        window.__payMeta = d.payMeta || null;
+        if(typeof window.anaOnPayMeta === 'function') window.anaOnPayMeta(window.__payMeta);
       } else {
         fail();
       }
@@ -2194,8 +2209,8 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
   window.csInviteMemberEmails = function(){
     return new Set(loadMembers().map(m => (m.email||'').toLowerCase()).filter(Boolean));
   };
-  /* 会員分析タブ向け：共有CSVマスター本体をGASから取得（JSONP・?csv=1） */
-  window.csInviteFetchCsv = function(cb){
+  /* 会員分析タブ向け：共有CSVマスター本体をGASから取得（JSONP）。param='csv'|'pay' */
+  function fetchSharedCsv_(param, cb){
     if(!gasConfigured_()){ cb(null); return; }
     const cbName = 'gasCsvCb_' + Date.now() + Math.floor(Math.random()*1000);
     const sc = document.createElement('script');
@@ -2203,13 +2218,18 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     function cleanup(){ try{ delete window[cbName]; }catch(e){} if(sc.parentNode) sc.parentNode.removeChild(sc); }
     window[cbName] = function(d){ done = true; cleanup(); cb(d); };
     sc.onerror = function(){ cleanup(); if(!done){ done = true; cb(null); } };
-    sc.src = GAS_URL + '?token=' + encodeURIComponent(GAS_TOKEN) + '&csv=1&callback=' + cbName;
+    sc.src = GAS_URL + '?token=' + encodeURIComponent(GAS_TOKEN) + '&' + param + '=1&callback=' + cbName;
     document.body.appendChild(sc);
     setTimeout(function(){ if(!done){ done = true; cleanup(); cb(null); } }, 20000);
-  };
+  }
+  window.csInviteFetchCsv = function(cb){ fetchSharedCsv_('csv', cb); };
+  window.csInviteFetchPay = function(cb){ fetchSharedCsv_('pay', cb); };
   /* 会員分析タブ向け：読み込んだCSVを共有マスターとしてGASへアップロード */
   window.csInvitePushCsv = function(name, text){
     pushTo_({csvMaster: {name: name||'', text: text||'', at: Date.now(), by: (SETTINGS && SETTINGS.staffName) || ''}});
+  };
+  window.csInvitePushPay = function(name, text){
+    pushTo_({payMaster: {name: name||'', text: text||'', at: Date.now(), by: (SETTINGS && SETTINGS.staffName) || ''}});
   };
   /* 会員分析タブ向け：指定メールの招待発行履歴を返す（新しい順） */
   window.csInviteRecordsFor = function(email){
@@ -2225,8 +2245,11 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     if(members.some(m => (m.email||'').toLowerCase() === c.email.toLowerCase())){
       toast('既に会員DBに登録済みです：'+(c.name||c.email)); return false;
     }
-    if(!confirm((c.name||c.email)+' さんを発行用の会員DBへ追加しますか？\n※ ライセンス数は空欄で追加されます。')) return false;
-    members.unshift({id:uid(), name:c.name||'', company:c.company||'', email:c.email, license:''});
+    const licNote = c.license
+      ? '\n※ ライセンス数 '+c.license+'（デジタル会員数＝総ライセンス−管理者1）を決済履歴から自動設定します。'
+      : '\n※ ライセンス数は空欄で追加されます。';
+    if(!confirm((c.name||c.email)+' さんを発行用の会員DBへ追加しますか？'+licNote)) return false;
+    members.unshift({id:uid(), name:c.name||'', company:c.company||'', email:c.email, license:(c.license!=null?String(c.license):'')});
     commitMembers(members);
     renderMembers();
     toast('会員DBに追加しました：'+(c.name||c.email));
@@ -2697,6 +2720,92 @@ function loadCache(){
   try{ var s=localStorage.getItem(LS_KEY); return s?JSON.parse(s):null; }catch(e){ return null; }
 }
 
+/* ===== 取引CSV（payment）：入金判定の精緻化・決済履歴・ライセンス自動補完 ===== */
+var LS_PAY="onestream_payment_csv_v1";
+var PAY=null, PAYIDX=null;  /* PAYIDX: 会員メールアドレス（小文字）→ 決済行[] */
+function payCell(r,name){var i=PAY?PAY.hidx[name]:null; return i==null?'':String(r[i]||'').trim();}
+/* テスト決済の判定（仕様書踏襲：決済テスト用・55円・A9テスト会員） */
+function isTestPay(r){
+  if((payCell(r,'商品名')+payCell(r,'料金名')).indexOf('テスト')>=0)return true;
+  if(payCell(r,'金額').replace(/[,，]/g,'')==='55円')return true;
+  if(payCell(r,'OneStream所属グループ').indexOf('A9テスト')>=0)return true;
+  return false;
+}
+function payRowsFor(em){ return (PAYIDX&&PAYIDX[(em||'').toLowerCase()])||[]; }
+/* Stripe入金判定（仕様書踏襲：succeeded − refunded ≥ 1。テスト決済は除外） */
+function stripeNetPaid(em){
+  var n=0;
+  payRowsFor(em).forEach(function(r){
+    if(isTestPay(r))return;
+    var st=payCell(r,'ステータス');
+    if(st==='succeeded')n++;
+    else if(st==='refunded')n--;
+  });
+  return n;
+}
+/* 商品名からデジタル総ライセンス数（管理者含む）を推定。
+   Aセット=3／Bセット=5／Dセット=15、特別セットは「デジタルN名」のNを採用。
+   succeeded（テスト除外）の中で最大値を返す。該当なしは null */
+function digitalLicense(em){
+  var best=null;
+  payRowsFor(em).forEach(function(r){
+    if(isTestPay(r))return;
+    if(payCell(r,'ステータス')!=='succeeded')return;
+    var p=payCell(r,'商品名'), n=null, m=p.match(/[＜<]([A-D])セット[＞>]/);
+    if(m) n={A:3,B:5,D:15}[m[1]]||null;
+    if(n==null){ m=p.match(/デジタル(\d+)名?/); if(m)n=parseInt(m[1],10); }
+    if(n!=null&&(best==null||n>best))best=n;
+  });
+  return best;
+}
+/* DB登録用 license（デジタル会員数＝総ライセンス−管理者1）。不明は '' */
+function licenseForDb(em){
+  var dl=digitalLicense(em);
+  return (dl!=null&&dl>1)?String(dl-1):'';
+}
+function ingestPay(text, name, fromCache){
+  var rows=parseCSV(text);
+  if(rows.length<2){ alert('取引CSVにデータ行がありません。'); return; }
+  var header=rows[0].map(function(s){return (s||'').trim();});
+  if(header.indexOf('会員メールアドレス')<0||header.indexOf('ステータス')<0){
+    alert('取引CSVの想定列（会員メールアドレス／ステータス）が見つかりません。payment CSVを選択してください。'); return;
+  }
+  var hidx={};header.forEach(function(c,i){hidx[c]=i;});
+  var data=rows.slice(1).filter(function(r){return r.some(function(c){return c&&c.trim()!=='';});});
+  PAY={header:header,hidx:hidx,data:data};
+  PAYIDX={};
+  data.forEach(function(r){
+    var em=String(r[hidx['会員メールアドレス']]||'').trim().toLowerCase();
+    if(!em)return;
+    (PAYIDX[em]=PAYIDX[em]||[]).push(r);
+  });
+  var el=document.getElementById('paysrc');
+  if(el)el.innerHTML='✓ '+escapeHtmlSimple(name||'')+'（'+data.length+'件）';
+  var pl=document.getElementById('payload'); if(pl)pl.classList.add('ok');
+  if(!fromCache){
+    try{ localStorage.setItem(LS_PAY, JSON.stringify({text:text,name:name||'',at:new Date().toISOString()})); }catch(e){}
+    if(typeof window.csInvitePushPay==='function') window.csInvitePushPay(name||'', text);
+  }
+  if(RAW) renderDB(currentFilter);  /* 状態列を payment 込みで再評価 */
+}
+function autoLoadPay(){
+  try{ var s=localStorage.getItem(LS_PAY); if(s){ var c=JSON.parse(s); if(c&&c.text) ingestPay(c.text, c.name, true); } }catch(e){}
+}
+/* 共有 payment マスターとの同期（users と同じ仕組み） */
+window.anaOnPayMeta=function(meta){
+  if(!meta||!meta.at)return;
+  var localAt=0;
+  try{ var s=localStorage.getItem(LS_PAY); if(s){var c=JSON.parse(s); localAt=(c&&c.at)?new Date(c.at).getTime():0;} }catch(e){}
+  if(localAt>=Number(meta.at))return;
+  if(typeof window.csInviteFetchPay!=='function')return;
+  window.csInviteFetchPay(function(d){
+    if(!(d&&d.ok&&d.payText))return;
+    ingestPay(d.payText, meta.name||'', true);
+    try{ localStorage.setItem(LS_PAY, JSON.stringify({text:d.payText,name:meta.name||'',at:new Date(Number(meta.at)).toISOString()})); }catch(e){}
+  });
+};
+if(window.__payMeta) window.anaOnPayMeta(window.__payMeta);
+
 function escapeHtmlSimple(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function parseYM(s){
   var m=s.match(/(\d{4})年\s*(\d{1,2})月/);
@@ -2857,6 +2966,16 @@ function initDropZone(){
   load.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readFile(f); });
 }
 function readFile(f){ var r=new FileReader(); r.onload=function(){ingest(r.result,"読込: "+f.name,f.name);}; r.readAsText(f,"UTF-8"); }
+function initPayDrop(){
+  var pl=document.getElementById("payload"), fi=document.getElementById("payfile");
+  if(!pl||!fi) return;
+  document.getElementById("paypick").addEventListener("click",function(){fi.click();});
+  fi.addEventListener("change",function(e){ if(e.target.files[0]) readPayFile(e.target.files[0]); });
+  ["dragenter","dragover"].forEach(function(ev){pl.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();pl.classList.add("hot");});});
+  ["dragleave","drop"].forEach(function(ev){pl.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();pl.classList.remove("hot");});});
+  pl.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readPayFile(f); });
+}
+function readPayFile(f){ var r=new FileReader(); r.onload=function(){ingestPay(r.result,f.name,false);}; r.readAsText(f,"UTF-8"); }
 
 /* ===== ツール3 / 会員DB ===== */
 var RAW=null;
@@ -2931,9 +3050,10 @@ function showMemberPopup(em){
   var isAdmin=g.indexOf('A1管理者')>=0;
   if(isAdmin){
     var inDb=(typeof window.csInviteMemberEmails==='function')&&window.csInviteMemberEmails().has(em.toLowerCase());
+    var paidOk=g.indexOf('入金済')>=0 || (PAYIDX && stripeNetPaid(em)>=1);  /* タグ or Stripe決済のいずれかで入金扱い */
     html+='<div style="margin:2px 0 4px">';
     if(inDb) html+='<span class="dbst-ok" style="display:inline-block;width:auto;padding:6px 16px">✓ 発行用会員DBに登録済み</span>';
-    else if(g.indexOf('入金済')>=0) html+='<button class="dbst-add" style="display:inline-block;width:auto;padding:6px 16px" data-email="'+esc(em)+'">＋ 発行用会員DBへ追加</button>';
+    else if(paidOk) html+='<button class="dbst-add" style="display:inline-block;width:auto;padding:6px 16px" data-email="'+esc(em)+'">＋ 発行用会員DBへ追加</button>';
     else html+='<span class="dbst-wait" style="display:inline-block;width:auto;padding:6px 16px">入金待ち（発行用DB対象だが未入金）</span>';
     html+='</div>';
     /* 招待発行履歴（メインツールの発行記録から） */
@@ -2945,6 +3065,27 @@ function showMemberPopup(em){
       }).join('')+'</table>';
     }else{
       html+='<div style="color:#8392a5;font-size:12px">このメールアドレス宛の発行履歴はありません</div>';
+    }
+  }
+  /* 決済履歴（payment CSV 読込時のみ・全会員に表示） */
+  if(PAYIDX){
+    var prs=payRowsFor(em);
+    html+='<div class="anamem-sec">💳 決済履歴（'+prs.length+'件）</div>';
+    if(prs.length){
+      html+='<table class="anamem-tbl">';
+      prs.forEach(function(pr){
+        var test=isTestPay(pr);
+        var st=payCell(pr,'ステータス');
+        var stStyle=st==='succeeded'?'color:#1f8a5a;font-weight:700':(st?'color:#c0392b;font-weight:700':'');
+        html+='<tr'+(test?' style="opacity:.55"':'')+'><th>'+esc(payCell(pr,'支払い日時'))+'</th>'
+          +'<td style="width:92px"><span style="'+stStyle+'">'+esc(st)+'</span>'+(test?'<br><span style="font-size:10px;color:#8392a5">テスト決済</span>':'')+'</td>'
+          +'<td>'+esc(payCell(pr,'商品名'))+'<br><span style="color:#8392a5;font-size:11px">'+esc(payCell(pr,'金額'))+' ／ '+esc(payCell(pr,'支払い方法'))+'</span></td></tr>';
+      });
+      html+='</table>';
+      var dl=digitalLicense(em);
+      if(dl!=null) html+='<div style="font-size:11.5px;color:#1f6f78;margin-top:4px">推定ライセンス：合計 '+dl+'（管理者1名＋デジタル会員 '+(dl-1)+'名）→ DB追加時は license '+(dl-1)+' を自動設定</div>';
+    }else{
+      html+='<div style="color:#8392a5;font-size:12px">このメールアドレスの決済記録はありません（請求書・銀行振込の場合は記録されません）</div>';
     }
   }
   /* 会員CSV全項目 */
@@ -3075,8 +3216,20 @@ function renderDB(filterKey){
   var dbSet=(isA1 && typeof window.csInviteMemberEmails==='function')?window.csInviteMemberEmails():null;
   function dbStatusCell(r){
     var em=cell(r,'メールアドレス');
-    if(cell(r,'所属グループ').indexOf('入金済')<0) return '<td class="dbst"><span class="dbst-wait">入金待ち</span></td>';
+    var g=cell(r,'所属グループ');
+    var tagPaid=g.indexOf('入金済')>=0;
+    var sBetsu=g.indexOf('S別入金済')>=0;
     if(dbSet && em && dbSet.has(em.toLowerCase())) return '<td class="dbst"><span class="dbst-ok">✓ 追加済</span></td>';
+    if(PAYIDX){
+      /* payment読込済み：タグ×Stripe決済のクロスチェック（仕様書踏襲：タグ単独は要確認扱い） */
+      var net=stripeNetPaid(em);
+      if(!tagPaid && net>=1) return '<td class="dbst"><button class="dbst-add dbst-flash" data-email="'+esc(em)+'" title="Stripe決済は確認済みですが、入金済タグが未付与です。タグ付与漏れの可能性があります">⚡ 入金確認・DB追加</button></td>';
+      if(tagPaid && net<1 && !sBetsu) return '<td class="dbst"><button class="dbst-add dbst-warn2" data-email="'+esc(em)+'" title="入金済タグはありますがStripe決済記録がありません（請求書・銀行振込なら正常）">⚠ タグのみ・DB追加</button></td>';
+      if(tagPaid || net>=1) return '<td class="dbst"><button class="dbst-add" data-email="'+esc(em)+'">＋ DB追加</button></td>';
+      return '<td class="dbst"><span class="dbst-wait">入金待ち</span></td>';
+    }
+    /* payment未読込：従来のタグのみ判定 */
+    if(!tagPaid) return '<td class="dbst"><span class="dbst-wait">入金待ち</span></td>';
     return '<td class="dbst"><button class="dbst-add" data-email="'+esc(em)+'">＋ DB追加</button></td>';
   }
   var tbl;
@@ -3103,6 +3256,7 @@ function markActive(){
 /* 初期化 */
 function initAnalysis(){
   initDropZone();
+  initPayDrop();
   document.getElementById("cards").addEventListener("click",function(e){
     var card=e.target.closest('.card.clickable'); if(!card)return;
     var key=card.getAttribute('data-filter'); if(!key)return;
@@ -3130,7 +3284,8 @@ function initAnalysis(){
       var ok=(typeof window.csInviteAddOneMember==='function') && window.csInviteAddOneMember({
         name: cell(row,'名前'),
         email: em,
-        company: cell(row,'所属企業・大学・組織名')
+        company: cell(row,'所属企業・大学・組織名'),
+        license: licenseForDb(em)
       });
       /* renderDB 再実行ではなくセル差し替え（絞込状態・スクロール位置を保持） */
       if(ok) btn.closest('td').innerHTML='<span class="dbst-ok">✓ 追加済</span>';
@@ -3197,7 +3352,8 @@ function initAnalysis(){
     for(var i=0;i<RAW.data.length;i++){ if(cell(RAW.data[i],'メールアドレス')===em){row=RAW.data[i];break;} }
     if(!row)return;
     var ok=(typeof window.csInviteAddOneMember==='function')&&window.csInviteAddOneMember({
-      name:cell(row,'名前'), email:em, company:cell(row,'所属企業・大学・組織名')
+      name:cell(row,'名前'), email:em, company:cell(row,'所属企業・大学・組織名'),
+      license:licenseForDb(em)
     });
     if(ok){
       btn.outerHTML='<span class="dbst-ok" style="display:inline-block;width:auto;padding:6px 16px">✓ 発行用会員DBに登録済み</span>';
@@ -3211,6 +3367,7 @@ function initAnalysis(){
   var vs=document.getElementById("verstamp");
   if(vs){ vs.textContent=ANA_VERSION+" / "+ANA_VERDATE; vs.title="会員登録件数確認ツール "+ANA_VERSION+"（"+ANA_VERDATE+"）"; }
   autoLoad();
+  autoLoadPay();
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', initAnalysis);
