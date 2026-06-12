@@ -1304,7 +1304,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612g', date:'2026-06-12', note:'⚡入金確認・DB追加のツールチップを運用実態に合わせて更新。Y26入金済タグはStripe→OneStreamワークフローで自動付与されるため通常⚡は出ない。出た場合の確認観点（CSV鮮度ズレ／ワークフロー障害／決済メールと会員メールの不一致）を明記。'};
+  const APP_BUILD = {version:'rev.0612h', date:'2026-06-12', note:'A1ビューの列順を修正：#（No）をテーブル先頭側（発行用DBの直後）に。従来は会社名を先頭に出す処理で # が中央に押し出されていた。並び順は従来どおり会社名→No昇順のまま。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -3202,7 +3202,9 @@ function renderDB(filterKey){
 
   var KEEP=RAW.header.filter(function(c){return DROP_COLS.indexOf(c)<0;});
   if(currentFilter==="A1" && KEEP.indexOf(COMPANY)>=0){
-    KEEP=[COMPANY].concat(KEEP.filter(function(c){return c!==COMPANY;}));
+    /* A1は会社名順ソートのため会社列を前に出すが、# (No) はさらにその前に残す */
+    var restA1=KEEP.filter(function(c){return c!==COMPANY && c!=='No';});
+    KEEP=(KEEP.indexOf('No')>=0?['No']:[]).concat([COMPANY]).concat(restA1);
   }
   var rows=ne.filter(function(r){return def.match(cell(r,'所属グループ'));})
     .sort(function(a,b){
