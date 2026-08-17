@@ -310,6 +310,54 @@
   }
   .member-pick-row button{flex:0 0 auto;}
 
+  /* 発行待ちリスト（会員CSVのA1・入金済から直接選ぶ） */
+  .pending-box{
+    border:1px solid #c7d2fe;
+    border-radius:6px;
+    padding:10px;
+    background:#eef2ff;
+    margin-bottom:12px;
+  }
+  .pending-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:2px;
+  }
+  .pending-title{font-size:12px;font-weight:700;color:#3730a3;}
+  .pending-count{font-weight:400;color:var(--muted);}
+  .pending-toggle{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;cursor:pointer;}
+  .pending-src{font-size:10px;color:#5b6675;margin-bottom:6px;line-height:1.6;}
+  .pending-src.stale{color:#b45309;font-weight:700;}
+  .pending-search{
+    width:100%;
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13px;
+  }
+  .pending-empty{
+    font-size:11px;
+    color:var(--muted);
+    padding:10px 4px;
+    text-align:center;
+    line-height:1.8;
+  }
+  .pending-flag{
+    display:inline-block;
+    font-size:9px;
+    font-weight:700;
+    padding:1px 6px;
+    border-radius:8px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+  .pending-flag.lic{background:#dcfce7;color:#166534;}
+  .pending-flag.nolic{background:#fee2e2;color:#991b1b;}
+  .pending-flag.warn{background:#ffedd5;color:#9a3412;}
+
   .btn{
     background:var(--accent);
     color:#fff;
@@ -973,10 +1021,21 @@
             <span>招待作成情報 <span class="sub" id="editingLabel">新規</span></span>
             <button class="btn-ghost btn btn-sm" onclick="clearForm()">情報クリア</button>
           </div>
-          <div class="section-desc">メイン会員（契約者）の情報を入力する。会員DBから呼び出すこともできる。</div>
+          <div class="section-desc">管理者会員（契約者）の情報を入力する。通常は下の「発行待ちリスト」から選ぶだけでよい。</div>
+
+          <!-- 発行待ちリスト：会員CSV（A1管理者・入金済）から直接選ぶ。会員DBへの手動登録は不要 -->
+          <div class="pending-box">
+            <div class="pending-head">
+              <span class="pending-title">発行待ちリスト <span class="pending-count" id="pendingCount"></span></span>
+              <label class="pending-toggle"><input type="checkbox" id="pendingShowIssued" onchange="renderPendingList()">発行済も表示</label>
+            </div>
+            <div class="pending-src" id="pendingSrc"></div>
+            <input type="text" id="pendingSearch" class="pending-search" placeholder="氏名・会社・メールで絞り込み" oninput="renderPendingList()">
+            <div id="pendingList" class="member-pick-list"></div>
+          </div>
 
           <div class="member-picker">
-            <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">会員DBから選択</label>
+            <label style="display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">会員DBから選択（手動登録分）</label>
             <div style="display:flex;gap:6px;">
               <input type="text" id="memberPickSearch" placeholder="氏名・会社・メールで検索" oninput="renderMemberPicker()" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;">
               <select id="memberPickFilter" onchange="renderMemberPicker()" style="padding:6px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:12px;">
@@ -1304,7 +1363,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0612j', date:'2026-06-12', note:'A2親子ビューのチェック列を削除。元ツールの「行マーキング＋チェック分CSV出力」用のUIだったが、cs-inviteでは機能を移植しておらず飾りになっていたため。必要になったら機能ごと実装する。'};
+  const APP_BUILD = {version:'rev.0817a', date:'2026-08-17', note:'入力タブに「発行待ちリスト」を追加。会員CSV（A1管理者×入金済）から未発行者を直接選べるようにし、会員DBへ手動登録してから発行する二重管理を不要にした。会員DBは手動登録分の受け皿として当面残す。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -2324,6 +2383,80 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     toast('フォームに反映しました：' + (m.name||''));
   }
 
+  /* ===== 発行待ちリスト =====
+     会員CSV（OneStream）の「A1管理者会員 × 入金済」を、会員DBという写しを経由せず
+     そのまま発行対象として表示する。発行履歴にあるメールは既定で除外＝未発行だけが残る。
+     CSVは手動ダウンロード運用のため、取込日時を常時表示して鮮度を判断できるようにする。 */
+  let PENDING_CACHE = {};
+  function renderPendingSrc_(){
+    const el = document.getElementById('pendingSrc');
+    if(!el) return;
+    const info = (typeof window.anaCsvInfo === 'function') ? window.anaCsvInfo() : null;
+    if(!info || !info.users){ el.textContent = ''; el.className = 'pending-src'; return; }
+    const at = new Date(info.users.at);
+    const days = Math.floor((Date.now() - at.getTime()) / 86400000);
+    el.textContent = '会員CSV取込: ' + at.toLocaleString('ja-JP')
+      + (info.users.by ? '（' + info.users.by + '）' : '')
+      + '　取引CSV: ' + (info.pay ? new Date(info.pay.at).toLocaleDateString('ja-JP') : '未読込（登録可能人数の自動補完なし）')
+      + (days >= 3 ? '　⚠ ' + days + '日前のデータです。最新CSVの読み込みを推奨' : '');
+    el.className = 'pending-src' + (days >= 3 ? ' stale' : '');
+  }
+  function renderPendingList(){
+    const listEl = document.getElementById('pendingList');
+    const cntEl = document.getElementById('pendingCount');
+    if(!listEl || !cntEl) return;
+    renderPendingSrc_();
+    const all = (typeof window.anaPendingIssueList === 'function') ? window.anaPendingIssueList() : null;
+    if(!all){
+      cntEl.textContent = '';
+      listEl.innerHTML = '<div class="pending-empty">会員CSVが読み込まれていません。<br>'
+        + '<button class="btn btn-sub btn-sm" style="margin-top:6px" onclick="switchScreen(\'analysis\')">会員分析タブでCSVを読み込む</button></div>';
+      return;
+    }
+    PENDING_CACHE = {};
+    all.forEach(function(c){ PENDING_CACHE[c.email.toLowerCase()] = c; });
+    const issued = new Set(loadRecords().map(r => (r.email||'').toLowerCase()).filter(Boolean));
+    const showIssued = document.getElementById('pendingShowIssued').checked;
+    const q = (document.getElementById('pendingSearch').value||'').trim().toLowerCase();
+    let rows = all.filter(c => showIssued || !issued.has(c.email.toLowerCase()));
+    if(q) rows = rows.filter(c => [c.name,c.company,c.email].some(v => (v||'').toLowerCase().includes(q)));
+    cntEl.textContent = `（${rows.length}件${showIssued ? '' : '・未発行'}）`;
+    if(!rows.length){
+      listEl.innerHTML = '<div class="pending-empty">'
+        + (q ? '該当する会員がいません。' : 'A1管理者会員・入金済で未発行の方はいません。')
+        + '</div>';
+      return;
+    }
+    listEl.innerHTML = rows.slice(0,100).map(function(c){
+      const isIssued = issued.has(c.email.toLowerCase());
+      const lic = c.license
+        ? `<span class="pending-flag lic">${escapeHtml(c.license)}名</span>`
+        : '<span class="pending-flag nolic">人数不明</span>';
+      let warn = '';
+      if(c.stripeOnly) warn = '<span class="pending-flag warn">⚡入金済タグなし</span>';
+      else if(c.tagOnly) warn = '<span class="pending-flag warn">⚠決済記録なし</span>';
+      return `<div class="member-pick-row">
+        <div class="member-pick-info">
+          <div class="member-pick-name">${escapeHtml(c.name||'（氏名なし）')}${lic}${warn}${isIssued?'<span class="member-pick-badge">発行済</span>':''}</div>
+          <div class="member-pick-sub">${escapeHtml(c.company||'－')}／${escapeHtml(c.email)}</div>
+        </div>
+        <button class="btn btn-sub btn-sm" onclick="pickPending('${escapeHtml(c.email)}')">選択</button>
+      </div>`;
+    }).join('') + (rows.length>100 ? `<div class="pending-empty">他 ${rows.length-100} 件。検索で絞り込んでください。</div>` : '');
+  }
+  function pickPending(email){
+    const c = PENDING_CACHE[(email||'').toLowerCase()];
+    if(!c) return;
+    document.getElementById('name').value = c.name || '';
+    document.getElementById('company').value = c.company || '';
+    document.getElementById('email').value = c.email || '';
+    if(c.license) document.getElementById('availableInvites').value = c.license;
+    onFormInput();
+    toast('フォームに反映しました：' + (c.name || c.email) + (c.license ? '' : '／登録可能人数は手入力してください'));
+  }
+  /* 会員分析タブでCSVが読み込まれた・更新されたときに呼ばれる */
+  window.csInviteOnAnaData = function(){ renderPendingList(); };
+
   function renderMembers(){
     renderMemberPicker();
     const members = loadMembers();
@@ -2610,6 +2743,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     renderInstrCards();
     updateMailPreview();
     renderHistory();
+    renderPendingList();  /* 発行履歴が変わると「未発行」の顔ぶれも変わるため */
   }
 
   let toastTimer;
@@ -2682,6 +2816,8 @@ function parseCSV(text){
 /* ===== データ保持 ===== */
 var RECORDS=[];
 var LS_KEY="onestream_member_csv_v1";
+/* CSVの取込日時・担当者（手動DL運用のため、発行タブ側で鮮度を表示するのに使う） */
+var ANA_CSV_INFO=null, ANA_PAY_INFO=null;
 
 function ingest(text, sourceLabel, csvName, fromCache, info){
   var rows=parseCSV(text);
@@ -2705,8 +2841,10 @@ function ingest(text, sourceLabel, csvName, fromCache, info){
       var isTest=g.indexOf('テスト会員')>=0 || /【テスト|【ﾃｽﾄ/.test(nm);
       return {tags:tags, ym:parseYM(r[idxJoin]||''), isTest:isTest};
     });
+  ANA_CSV_INFO={name:csvName||sourceLabel||'', at:(info&&info.at)||Date.now(), by:(info&&info.by)||''};
   setLoad('📌 <b>マスター保存中</b>：'+escapeHtmlSimple(csvName||sourceLabel)+'（全 '+RECORDS.length+' 件）'+csvInfoLabel(info)+'<button class="btn-link" onclick="anaClearMaster()" title="保存されたマスターCSVを削除">マスターをクリア</button>',"ok");
   render();
+  if(typeof window.csInviteOnAnaData==='function') window.csInviteOnAnaData();  /* 発行待ちリストを更新 */
   if(!fromCache){
     saveCache(text, csvName||"", info&&info.by?info.by:"");
     /* 手動で読み込んだCSVは共有マスターとしてGASへもアップロード
@@ -2797,7 +2935,9 @@ function ingestPay(text, name, fromCache, info){
     try{ localStorage.setItem(LS_PAY, JSON.stringify({text:text,name:name||'',by:by,at:new Date().toISOString()})); }catch(e){}
     if(typeof window.csInvitePushPay==='function') window.csInvitePushPay(name||'', text);
   }
+  ANA_PAY_INFO={name:name||'', at:(info&&info.at)||Date.now(), by:(info&&info.by)||''};
   if(RAW) renderDB(currentFilter);  /* 状態列を payment 込みで再評価 */
+  if(typeof window.csInviteOnAnaData==='function') window.csInviteOnAnaData();  /* 登録可能人数の自動補完が効くようになるため再描画 */
 }
 function autoLoadPay(){
   try{ var s=localStorage.getItem(LS_PAY); if(s){ var c=JSON.parse(s); if(c&&c.text) ingestPay(c.text, c.name, true, {at:c.at, by:c.by||''}); } }catch(e){}
@@ -3270,6 +3410,39 @@ function markActive(){
     c.classList.toggle('active', c.getAttribute('data-filter')===currentFilter);
   });
 }
+
+/* ===== 発行タブ連携：発行待ちリストの元データ =====
+   会員CSVの原本から「A1管理者会員 × 入金済（タグ or Stripe決済）× テスト行除外」を抽出して返す。
+   会員DBシート（CSVの写し）を経由せずに発行できるようにするためのブリッジ。
+   CSV未読込のときは null を返し、画面側で読み込み案内を出させる。 */
+window.anaPendingIssueList = function(){
+  if(!RAW) return null;
+  var out=[];
+  RAW.data.forEach(function(r){
+    if(isTestRow(r)) return;
+    var g=cell(r,'所属グループ');
+    if(!FILTER_DEFS['A1'].match(g)) return;
+    var em=cell(r,'メールアドレス'); if(!em) return;
+    var tagPaid=g.indexOf('入金済')>=0;
+    var net=PAYIDX?stripeNetPaid(em):0;
+    if(!tagPaid && net<1) return;  /* 入金待ちは発行対象外 */
+    out.push({
+      name:cell(r,'名前'),
+      company:cell(r,'所属企業・大学・組織名'),
+      email:em,
+      license:PAYIDX?licenseForDb(em):'',
+      /* 発行前に人が確認すべき不一致（A1ビューの状態列と同じ判定） */
+      stripeOnly:(!tagPaid && net>=1),
+      tagOnly:(tagPaid && !!PAYIDX && net<1 && g.indexOf('S別入金済')<0)
+    });
+  });
+  return out.sort(function(a,b){
+    var c=(a.company||'').localeCompare(b.company||'','ja');
+    return c!==0?c:(a.name||'').localeCompare(b.name||'','ja');
+  });
+};
+/* 発行タブ向け：CSVの取込日時（手動DL運用なので鮮度を発行画面にも出す） */
+window.anaCsvInfo = function(){ return {users:ANA_CSV_INFO, pay:ANA_PAY_INFO}; };
 
 /* 初期化 */
 function initAnalysis(){
