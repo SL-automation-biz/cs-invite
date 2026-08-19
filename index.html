@@ -1363,7 +1363,7 @@
   const MEMBERS_KEY = 'cs_invite_members_v3';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0817a', date:'2026-08-17', note:'入力タブに「発行待ちリスト」を追加。会員CSV（A1管理者×入金済）から未発行者を直接選べるようにし、会員DBへ手動登録してから発行する二重管理を不要にした。会員DBは手動登録分の受け皿として当面残す。'};
+  const APP_BUILD = {version:'rev.0817b', date:'2026-08-17', note:'デジタル会員向け案内PDFがA4 1枚に収まらない問題を修正。長い会社名だと招待URLのパーセントエンコードで行数が増え、フッターが2ページ目に溢れていた。余白・行間を詰め、URL欄はURL長に応じて文字サイズを自動調整（A4に対し約8〜10%の余裕を確保）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1533,6 +1533,8 @@
   function buildSubMemberPdfHtml_(d){
     const url = d.final_url || '';
     const qr = d.qrPng || '';
+    /* 契約者の会社名が長いとURLのパーセントエンコードで行数が増え、A4から溢れる。長さに応じて字を落とす */
+    const urlFs = url.length > 320 ? '8.4px' : (url.length > 240 ? '9px' : '9.5px');
     const passRule = '半角8文字以上：数字、英大文字・小文字をそれぞれ含む';
     const e = function(s){ return escapeHtml(s); };
     return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>アカウント登録のご案内</title>
@@ -1540,36 +1542,36 @@
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;color:#23303a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .page{width:210mm;min-height:297mm;background:#fff;display:flex;flex-direction:column;}
-.pg-head{background:#1d3f5e;color:#fff;padding:16px 22mm 14px;}
+.pg-head{background:#1d3f5e;color:#fff;padding:12px 22mm 11px;}
 .kicker{font-size:11px;letter-spacing:.22em;opacity:.85;}
-.pg-head h1{margin:6px 0 0;font-size:22px;font-weight:700;}
+.pg-head h1{margin:5px 0 0;font-size:20px;font-weight:700;}
 .pg-head .lead{margin-top:4px;font-size:12px;opacity:.9;line-height:1.6;}
-.pg-body{padding:14px 22mm 14px;flex:1;}
-.intro{font-size:12.5px;line-height:1.85;margin:0 0 10px;}
-.cta{border:1.5px solid #2a7fa8;border-radius:10px;background:#eef4f8;padding:14px 18px;margin:0 0 6px;}
+.pg-body{padding:11px 22mm 11px;flex:1;}
+.intro{font-size:12.5px;line-height:1.78;margin:0 0 8px;}
+.cta{border:1.5px solid #2a7fa8;border-radius:10px;background:#eef4f8;padding:12px 17px;margin:0 0 6px;}
 .cta-row{display:flex;gap:18px;align-items:center;}
 .cta-left{flex:1;}
 .cta-t{font-size:12.5px;font-weight:700;color:#1d3f5e;margin:0 0 8px;}
 .btn-reg{display:inline-block;text-decoration:none;background:#2a7fa8;color:#fff;font-weight:700;font-size:15px;padding:11px 26px;border-radius:8px;}
 .cta-qr{text-align:center;flex:0 0 auto;border-left:1px dashed #b9cdd9;padding-left:18px;}
-.cta-qr img{width:108px;height:108px;display:block;border:1px solid #d9e0e7;background:#fff;}
+.cta-qr img{width:98px;height:98px;display:block;border:1px solid #d9e0e7;background:#fff;}
 .qr-cap{font-size:10.5px;color:#6b7785;margin-top:5px;line-height:1.4;}
 .url-fb{font-size:10.5px;color:#6b7785;margin:0 0 4px;line-height:1.6;}
-.url-box{background:#f4f7fa;border:1px solid #d9e0e7;border-radius:5px;padding:7px 10px;margin:0 0 12px;font-family:"Consolas","Menlo",monospace;font-size:10px;color:#2a7fa8;word-break:break-all;line-height:1.5;}
-.sec-h{font-size:13.5px;font-weight:700;color:#1d3f5e;border-bottom:2px solid #1d3f5e;padding-bottom:4px;margin:12px 0 8px;}
+.url-box{background:#f4f7fa;border:1px solid #d9e0e7;border-radius:5px;padding:5px 9px;margin:0 0 9px;font-family:"Consolas","Menlo",monospace;font-size:9.5px;color:#2a7fa8;word-break:break-all;line-height:1.4;}
+.sec-h{font-size:13.5px;font-weight:700;color:#1d3f5e;border-bottom:2px solid #1d3f5e;padding-bottom:4px;margin:10px 0 7px;}
 .sec-h .ic{display:inline-block;background:#1d3f5e;color:#fff;font-size:10.5px;border-radius:4px;padding:2px 8px;margin-right:7px;}
 .steps{margin:0;padding:0;list-style:none;}
-.step{display:flex;gap:12px;padding:7px 0;border-bottom:1px dashed #d9e0e7;}
+.step{display:flex;gap:12px;padding:6px 0;border-bottom:1px dashed #d9e0e7;}
 .step:last-child{border-bottom:none;}
 .step .no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#1d3f5e;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
-.sb{flex:1;font-size:12px;line-height:1.65;}
+.sb{flex:1;font-size:12px;line-height:1.62;}
 .st{display:block;font-weight:700;font-size:13px;color:#23303a;margin-bottom:2px;}
 .sd{display:block;color:#6b7785;}
-.after{font-size:12px;line-height:1.8;margin:8px 0 0;}
-.notes{background:#fdf3f3;border:1px solid #f0cccc;border-radius:8px;padding:10px 14px;margin:10px 0 0;}
+.after{font-size:12px;line-height:1.7;margin:6px 0 0;}
+.notes{background:#fdf3f3;border:1px solid #f0cccc;border-radius:8px;padding:8px 12px;margin:8px 0 0;}
 .notes ul{margin:0;padding-left:18px;}
-.notes li{font-size:11.5px;line-height:1.8;margin:3px 0;}
-.pg-foot{background:#15314a;color:#fff;padding:18px 22mm;font-size:10.5px;line-height:1.75;}
+.notes li{font-size:11.5px;line-height:1.75;margin:3px 0;}
+.pg-foot{background:#15314a;color:#fff;padding:15px 22mm;font-size:10.5px;line-height:1.65;page-break-inside:avoid;break-inside:avoid;}
 .pg-foot .ttl{font-weight:700;font-size:11.5px;margin-bottom:2px;}
 .pg-foot a{color:#9fd0e6;}
 @page{size:A4;margin:0;}
@@ -1596,7 +1598,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
       </div>
     </div></div>
     <p class="url-fb">ボタン・QRコードがご利用になれない場合は、下記URLをブラウザのアドレス欄に貼り付けてください。</p>
-    <div class="url-box">${e(url)}</div>
+    <div class="url-box" style="font-size:${urlFs}">${e(url)}</div>
     <div class="sec-h"><span class="ic">手順</span>登録ページでの入力項目</div>
     <ul class="steps">
       <li class="step"><div class="no">1</div><div class="sb"><span class="st">名前</span><span class="sd">お名前を入力してください。入力の際は姓と名の間に全角スペースを入れてください（例:山田　太郎）。</span></div></li>
