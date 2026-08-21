@@ -358,6 +358,40 @@
   .pending-flag.nolic{background:#fee2e2;color:#991b1b;}
   .pending-flag.warn{background:#ffedd5;color:#9a3412;}
 
+  /* 要確認リスト（通常の入金済フローから外れている人） */
+  .alert-box{
+    border:1px solid #fecaca;
+    border-radius:6px;
+    padding:10px;
+    background:#fef2f2;
+    margin-bottom:12px;
+  }
+  .alert-title{font-size:12px;font-weight:700;color:#991b1b;}
+  .alert-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:8px;
+    padding:7px 9px;
+    border:1px solid #fecaca;
+    border-radius:4px;
+    background:#fff;
+    margin-bottom:4px;
+  }
+  .alert-main{min-width:0;flex:1;}
+  .alert-reason{font-size:11px;color:#b91c1c;font-weight:700;margin-top:2px;}
+  .alert-btns{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;}
+  .note-line{
+    font-size:11px;color:#3730a3;background:#eef2ff;
+    border-radius:3px;padding:3px 6px;margin-top:4px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  #noteText{
+    width:100%;min-height:150px;padding:8px;
+    border:1px solid var(--border);border-radius:4px;
+    font-family:inherit;font-size:13px;line-height:1.7;resize:vertical;
+  }
+
   .btn{
     background:var(--accent);
     color:#fff;
@@ -1023,6 +1057,16 @@
           </div>
           <div class="section-desc">管理者会員（契約者）の情報を入力する。通常は下の「発行待ちリスト」から選ぶだけでよい。</div>
 
+          <!-- 要確認：通常の入金済フローから外れている人（見落とし防止） -->
+          <div class="alert-box" id="alertBox" style="display:none">
+            <div class="pending-head">
+              <span class="alert-title">⚠ 要確認 <span class="pending-count" id="alertCount"></span></span>
+              <label class="pending-toggle"><input type="checkbox" id="alertShowIssued" onchange="renderAlertList()">発行済も表示</label>
+            </div>
+            <div class="pending-src">入金済タグの標準フローから外れている管理者会員。発行の要否を判断し、メモを残してください。</div>
+            <div id="alertList"></div>
+          </div>
+
           <!-- 発行待ちリスト：会員CSV（A1管理者・入金済）から直接選ぶ。会員DBへの手動登録は不要 -->
           <div class="pending-box">
             <div class="pending-head">
@@ -1215,6 +1259,23 @@
 </main>
 
 <!-- 会員DBモーダル -->
+<!-- 会員メモ：要確認会員への申し送り。スプレッドシートで全員共有される -->
+<div class="modal-overlay" id="noteModal">
+  <div class="modal" style="max-width:560px">
+    <h3>メモ</h3>
+    <div class="section-desc" id="noteWho" style="font-weight:700;color:var(--text)"></div>
+    <div class="hint" id="noteMeta" style="margin-bottom:6px"></div>
+    <textarea id="noteText" placeholder="例）2026/08/21 魚井：入金待救済のため発行保留。経理確認後に再検討。"></textarea>
+    <div class="hint">スプレッドシートの「会員メモ」シートに保存され、全員に共有されます。</div>
+    <div class="modal-actions">
+      <button class="btn btn-sub btn-sm" onclick="stampNote()">日付＋担当者を挿入</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" onclick="closeNoteModal()">キャンセル</button>
+      <button class="btn btn-sm" onclick="submitNote()">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="memberDBModal">
   <div class="modal">
     <h3>会員DB</h3>
@@ -1361,9 +1422,10 @@
   const STORAGE_KEY = 'cs_invite_records_v3';
   const SETTINGS_KEY = 'cs_invite_settings_v4';
   const MEMBERS_KEY = 'cs_invite_members_v3';
+  const NOTES_KEY = 'cs_invite_notes_v1';
   const GAS_URL = 'https://script.google.com/a/macros/sophialinks.com/s/AKfycbzqZ3sLi8yFtct8SGoCPytmNNkbZCTCBBah--9Hc0vmrbiBHK1XTooBsq6JEJKLyQVB2A/exec';
   const GAS_TOKEN = 'cs-invite-r7m3k9w2q8x5';
-  const APP_BUILD = {version:'rev.0817b', date:'2026-08-17', note:'デジタル会員向け案内PDFがA4 1枚に収まらない問題を修正。長い会社名だと招待URLのパーセントエンコードで行数が増え、フッターが2ページ目に溢れていた。余白・行間を詰め、URL欄はURL長に応じて文字サイズを自動調整（A4に対し約8〜10%の余裕を確保）。'};
+  const APP_BUILD = {version:'rev.0821a', date:'2026-08-21', note:'入力タブに「⚠要確認」枠と会員メモを追加。A1管理者のうち救済・引継・複数メイン等の標準外タグを持つ人は発行待ちリストの条件（入金済）から漏れるため、別枠で表示して見落としを防ぐ。あわせて会員ごとのメモをスプレッドシート「会員メモ」シートで全員共有できるようにした（GAS側の対応も同時に反映）。'};
   (function(){ var el = document.getElementById('revLabel'); if(el) el.textContent = APP_BUILD.version; })();
 
   const DEFAULT_SETTINGS = {
@@ -1457,6 +1519,7 @@
         revealTool_();
         saveJSON(STORAGE_KEY, Array.isArray(d.records) ? d.records : []);
         saveJSON(MEMBERS_KEY, Array.isArray(d.members) ? d.members : []);
+        saveJSON(NOTES_KEY, Array.isArray(d.notes) ? d.notes : []);
         if(d.settings){
           SETTINGS = {...cloneDefaults(), ...d.settings};
           applyManualImages_(SETTINGS);
@@ -1496,6 +1559,7 @@
   }
   function pushRecords(){ pushTo_({records: loadRecords()}); }
   function pushMembers(){ pushTo_({members: loadMembers()}); }
+  function pushNotes(){ pushTo_({notes: loadNotes()}); }
   function settingsForSync_(){
     const c = JSON.parse(JSON.stringify(SETTINGS));
     if(Array.isArray(c.instrSteps)) c.instrSteps.forEach(function(s){ s.image = ''; });
@@ -2441,10 +2505,21 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
         <div class="member-pick-info">
           <div class="member-pick-name">${escapeHtml(c.name||'（氏名なし）')}${lic}${warn}${isIssued?'<span class="member-pick-badge">発行済</span>':''}</div>
           <div class="member-pick-sub">${escapeHtml(c.company||'－')}／${escapeHtml(c.email)}</div>
+          ${noteBadgeHTML_(c.email)}
         </div>
-        <button class="btn btn-sub btn-sm" onclick="pickPending('${escapeHtml(c.email)}')">選択</button>
+        <div class="alert-btns">
+          <button class="btn btn-ghost btn-sm" data-note="${escapeHtml(c.email)}" data-name="${escapeHtml(c.name||'')}">メモ</button>
+          <button class="btn btn-sub btn-sm" data-pick="${escapeHtml(c.email)}">選択</button>
+        </div>
       </div>`;
     }).join('') + (rows.length>100 ? `<div class="pending-empty">他 ${rows.length-100} 件。検索で絞り込んでください。</div>` : '');
+    /* ボタンの挙動は data 属性から結びつける */
+    listEl.querySelectorAll('[data-note]').forEach(function(b){
+      b.onclick = function(){ openNoteModal(b.getAttribute('data-note'), b.getAttribute('data-name')); };
+    });
+    listEl.querySelectorAll('[data-pick]').forEach(function(b){
+      b.onclick = function(){ pickPending(b.getAttribute('data-pick')); };
+    });
   }
   function pickPending(email){
     const c = PENDING_CACHE[(email||'').toLowerCase()];
@@ -2456,8 +2531,132 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     onFormInput();
     toast('フォームに反映しました：' + (c.name || c.email) + (c.license ? '' : '／登録可能人数は手入力してください'));
   }
+  /* ===== 会員メモ =====
+     要確認会員への申し送り。メール単位でスプレッドシートの「会員メモ」シートに保存し、
+     全員で共有する（誰がいつ書いたかも残す）。 */
+  function loadNotes(){ return loadJSON(NOTES_KEY, []); }
+  function noteFor(email){
+    const em=(email||'').toLowerCase();
+    return loadNotes().find(n => (n.email||'').toLowerCase()===em) || null;
+  }
+  function saveNote(email, memo){
+    const em=(email||'').trim();
+    if(!em) return;
+    const notes = loadNotes().filter(n => (n.email||'').toLowerCase() !== em.toLowerCase());
+    const text=(memo||'').trim();
+    if(text){
+      notes.unshift({
+        email: em,
+        memo: text,
+        updated_by: (SETTINGS && SETTINGS.staffName) || '',
+        updated_at: nowJST()
+      });
+    }
+    saveJSON(NOTES_KEY, notes);
+    pushNotes();
+  }
+  let NOTE_TARGET = '';
+  function openNoteModal(email, name){
+    NOTE_TARGET = email;
+    const n = noteFor(email);
+    document.getElementById('noteWho').textContent = (name||'') + '（' + email + '）';
+    document.getElementById('noteText').value = n ? (n.memo||'') : '';
+    document.getElementById('noteMeta').textContent = (n && n.updated_at)
+      ? '最終更新：' + n.updated_at + (n.updated_by ? '（' + n.updated_by + '）' : '')
+      : 'まだメモはありません';
+    document.getElementById('noteModal').classList.add('show');
+    setTimeout(function(){ document.getElementById('noteText').focus(); }, 50);
+  }
+  function closeNoteModal(){ document.getElementById('noteModal').classList.remove('show'); }
+  function submitNote(){
+    saveNote(NOTE_TARGET, document.getElementById('noteText').value);
+    closeNoteModal();
+    renderAlertList();
+    renderPendingList();
+    toast('メモを保存しました');
+  }
+  /* メモ入力欄に日時＋担当者の行を足す（追記しやすくするための補助） */
+  function stampNote(){
+    const ta = document.getElementById('noteText');
+    const who = (SETTINGS && SETTINGS.staffName) || '';
+    const head = nowJST().slice(0,10) + (who ? ' ' + who : '') + '：';
+    ta.value = (ta.value ? ta.value.replace(/\s*$/, '') + '\n' : '') + head;
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+  }
+  function noteBadgeHTML_(email){
+    const n = noteFor(email);
+    if(!n || !n.memo) return '';
+    const one = n.memo.replace(/\s+/g,' ').slice(0,40);
+    return '<div class="note-line" title="' + escapeHtml(n.memo) + '">📝 ' + escapeHtml(one)
+      + (n.memo.length>40 ? '…' : '') + '</div>';
+  }
+
+  /* ===== 要確認リスト =====
+     A1管理者会員のうち、通常の入金済フローから外れている人。
+     発行待ちリストの条件から漏れて見落とされるのを防ぐ。 */
+  let ALERT_CACHE = {};
+  function renderAlertList(){
+    const box = document.getElementById('alertBox');
+    const listEl = document.getElementById('alertList');
+    const cntEl = document.getElementById('alertCount');
+    if(!box || !listEl) return;
+    const all = (typeof window.anaAlertList === 'function') ? window.anaAlertList() : null;
+    if(!all || !all.length){
+      box.style.display = 'none';
+      return;
+    }
+    const issued = new Set(loadRecords().map(r => (r.email||'').toLowerCase()).filter(Boolean));
+    const showIssued = document.getElementById('alertShowIssued').checked;
+    ALERT_CACHE = {};
+    all.forEach(function(c){ ALERT_CACHE[c.email.toLowerCase()] = c; });
+    const rows = all.filter(c => showIssued || !issued.has(c.email.toLowerCase()));
+    box.style.display = '';
+    const waiting = (typeof window.anaPendingPaymentCount === 'function') ? window.anaPendingPaymentCount() : 0;
+    cntEl.textContent = '（' + rows.length + '件' + (showIssued ? '' : '・未発行') + '）'
+      + (waiting ? '　※通常の入金待ちが別に ' + waiting + '名います' : '');
+    if(!rows.length){
+      listEl.innerHTML = '<div class="pending-empty">未発行の要確認はありません。</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function(c){
+      const isIssued = issued.has(c.email.toLowerCase());
+      return '<div class="alert-row">'
+        + '<div class="alert-main">'
+        +   '<div class="member-pick-name">' + escapeHtml(c.name||'（氏名なし）')
+        +     (isIssued ? '<span class="member-pick-badge">発行済</span>' : '')
+        +   '</div>'
+        +   '<div class="member-pick-sub">' + escapeHtml(c.company||'－') + '／' + escapeHtml(c.email) + '</div>'
+        +   '<div class="alert-reason">⚠ ' + escapeHtml(c.reason) + '</div>'
+        +   noteBadgeHTML_(c.email)
+        + '</div>'
+        + '<div class="alert-btns">'
+        +   '<button class="btn btn-sub btn-sm" data-note="' + escapeHtml(c.email) + '" data-name="' + escapeHtml(c.name||'') + '">メモ</button>'
+        +   '<button class="btn btn-sub btn-sm" data-pick="' + escapeHtml(c.email) + '">選択</button>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+    /* ボタンの挙動は data 属性から結びつける（メールに引用符が入っても壊れないため） */
+    listEl.querySelectorAll('[data-note]').forEach(function(b){
+      b.onclick = function(){ openNoteModal(b.getAttribute('data-note'), b.getAttribute('data-name')); };
+    });
+    listEl.querySelectorAll('[data-pick]').forEach(function(b){
+      b.onclick = function(){ pickAlert(b.getAttribute('data-pick')); };
+    });
+  }
+  function pickAlert(email){
+    const c = ALERT_CACHE[(email||'').toLowerCase()];
+    if(!c) return;
+    document.getElementById('name').value = c.name || '';
+    document.getElementById('company').value = c.company || '';
+    document.getElementById('email').value = c.email || '';
+    if(c.license) document.getElementById('availableInvites').value = c.license;
+    onFormInput();
+    toast('フォームに反映しました：' + (c.name || c.email));
+  }
+
   /* 会員分析タブでCSVが読み込まれた・更新されたときに呼ばれる */
-  window.csInviteOnAnaData = function(){ renderPendingList(); };
+  window.csInviteOnAnaData = function(){ renderPendingList(); renderAlertList(); };
 
   function renderMembers(){
     renderMemberPicker();
@@ -2746,6 +2945,7 @@ body{margin:0;font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif;col
     updateMailPreview();
     renderHistory();
     renderPendingList();  /* 発行履歴が変わると「未発行」の顔ぶれも変わるため */
+    renderAlertList();
   }
 
   let toastTimer;
@@ -3443,6 +3643,57 @@ window.anaPendingIssueList = function(){
     return c!==0?c:(a.name||'').localeCompare(b.name||'','ja');
   });
 };
+/* ===== 発行タブ連携：要確認リスト =====
+   A1管理者会員のうち、通常の「入金済」フローから外れている人を拾う。
+   ・救済／引継／複数メイン／S別入金 など、標準外のタグが付いている
+   ・Stripe決済はあるのに入金済タグが付いていない（ワークフロー障害の疑い）
+   発行待ちリストの条件（A1×入金済）から漏れるため、見落とし防止として別枠で出す。 */
+var ANA_SPECIAL_TAG = /救済|引継|複数メイン|S別|請求/;
+window.anaAlertList = function(){
+  if(!RAW) return null;
+  var out=[];
+  RAW.data.forEach(function(r){
+    if(isTestRow(r)) return;
+    var g=cell(r,'所属グループ');
+    if(!FILTER_DEFS['A1'].match(g)) return;
+    var em=cell(r,'メールアドレス'); if(!em) return;
+    var tagPaid=g.indexOf('入金済')>=0;
+    var net=PAYIDX?stripeNetPaid(em):0;
+    var special=g.split(';').map(function(t){return t.trim();})
+                 .filter(function(t){ return t && ANA_SPECIAL_TAG.test(t); });
+    var reason='';
+    if(!tagPaid && net>=1) reason='Stripe決済はあるが入金済タグなし';
+    else if(!tagPaid && special.length) reason='標準外のタグ：' + special.join('／');
+    else if(tagPaid && special.length && special.join('').indexOf('S別')<0) reason='入金済だが標準外のタグ：' + special.join('／');
+    if(!reason) return;
+    out.push({
+      name:cell(r,'名前'),
+      company:cell(r,'所属企業・大学・組織名'),
+      email:em,
+      tags:g,
+      reason:reason,
+      license:PAYIDX?licenseForDb(em):''
+    });
+  });
+  return out.sort(function(a,b){ return (a.company||'').localeCompare(b.company||'','ja'); });
+};
+/* 発行タブ向け：入金待ち（標準）の件数だけ返す。アラートに出すとノイズになるため件数のみ */
+window.anaPendingPaymentCount = function(){
+  if(!RAW) return 0;
+  var n=0;
+  RAW.data.forEach(function(r){
+    if(isTestRow(r)) return;
+    var g=cell(r,'所属グループ');
+    if(!FILTER_DEFS['A1'].match(g)) return;
+    var em=cell(r,'メールアドレス'); if(!em) return;
+    if(g.indexOf('入金済')>=0) return;
+    if((PAYIDX?stripeNetPaid(em):0)>=1) return;
+    if(ANA_SPECIAL_TAG.test(g)) return;
+    n++;
+  });
+  return n;
+};
+
 /* 発行タブ向け：CSVの取込日時（手動DL運用なので鮮度を発行画面にも出す） */
 window.anaCsvInfo = function(){ return {users:ANA_CSV_INFO, pay:ANA_PAY_INFO}; };
 
